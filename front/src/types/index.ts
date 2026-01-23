@@ -36,6 +36,21 @@ export interface Cotizacion {
     notas?: string;
 }
 
+// Legacy: Reserva (mantener para compatibilidad mientras se migra stats/flujo)
+export interface Reserva {
+    id?: string;
+    codigo_reserva?: string;
+    cabana?: string; // Legacy field name
+    cliente_nombre?: string;
+    cliente_telefono?: string;
+    cliente_email?: string;
+    fecha_inicio?: string;
+    fecha_fin?: string;
+    estado?: string;
+    created_at?: string | any; // Type 'any' for firestore timestamp compat
+    precio_total?: number;
+}
+
 // Estadísticas
 export interface Estadisticas {
     totalConversaciones: number;
@@ -99,5 +114,3 @@ export interface Promocion {
         fallidos: number;
     }[];
 }
-
-

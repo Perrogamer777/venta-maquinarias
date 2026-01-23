@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import { getDaysInMonth, parseISO, startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Phone, Home, Calendar, CheckCircle } from 'lucide-react';
+import { Phone, Home, Calendar, CheckCircle, User, Truck } from 'lucide-react';
 import type { Reserva, Mensaje } from '@/types';
 import { useConfig } from '@/contexts/ConfigContext';
 
@@ -531,8 +531,9 @@ export default function EstadisticasPage() {
                     >
                         {/* Header */}
                         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                                ✅ Clientes con Reservas
+                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CheckCircle size={24} className="text-green-500" />
+                                Clientes con Reservas
                             </h3>
                             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                                 {allReservas.length} reserva{allReservas.length !== 1 ? 's' : ''} en total
@@ -556,18 +557,18 @@ export default function EstadisticasPage() {
                                     return acc;
                                 }, {} as Record<string, { email?: string; telefono?: string; reservas: Reserva[] }>);
 
-                                return Object.entries(groupedByClient).map(([clientName, data]) => (
+                                return Object.entries(groupedByClient).map(([clientName, data]: [string, { email?: string; telefono?: string; reservas: Reserva[] }]) => (
                                     <div key={clientName} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                                         {/* Client Header */}
                                         <div className="bg-gray-50 dark:bg-gray-800/50 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center justify-between">
                                                 <div>
                                                     <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                                        👤 {clientName}
+                                                        <User size={16} /> {clientName}
                                                     </h4>
                                                     {data.telefono && (
-                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                                            📱 {data.telefono}
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
+                                                            <Phone size={12} /> {data.telefono}
                                                         </p>
                                                     )}
                                                 </div>
@@ -584,11 +585,12 @@ export default function EstadisticasPage() {
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                                                         <div>
-                                                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                🏠 {reserva.cabana}
+                                                            <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-1">
+                                                                <Truck size={14} /> {reserva.cabana}
                                                             </p>
                                                             <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                                                <span>📅 {reserva.fecha_inicio}</span>
+                                                                <Calendar size={12} />
+                                                                <span>{reserva.fecha_inicio}</span>
                                                                 <span>→</span>
                                                                 <span>{reserva.fecha_fin}</span>
                                                             </div>

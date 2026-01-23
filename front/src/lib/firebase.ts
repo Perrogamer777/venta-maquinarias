@@ -13,7 +13,7 @@ const firebaseConfig = {
 };
 
 // DEBUG: Log config to verify env vars
-console.log('🔥 Firebase Config:', {
+console.log('[Firebase] Config:', {
   hasApiKey: !!firebaseConfig.apiKey,
   hasProjectId: !!firebaseConfig.projectId,
   projectId: firebaseConfig.projectId,

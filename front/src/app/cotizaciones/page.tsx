@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { useConfig } from '@/contexts/ConfigContext';
 import { ESTADOS_COTIZACION } from '@/lib/businessTypes';
 import type { Cotizacion, Maquinaria } from '@/types';
-import { Search, FileText, User, Building2, Mail, Phone, X, Plus, Edit2, Trash2, Calendar, DollarSign, Save } from 'lucide-react';
+import { Search, FileText, User, Building2, Mail, Phone, X, Plus, Edit2, Trash2, Calendar, DollarSign, Save, Circle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -136,7 +136,7 @@ export default function CotizacionesPage() {
 
     const getEstadoBadge = (estado: string) => {
         const config = ESTADOS_COTIZACION.find(e => e.value === estado);
-        return config || { label: estado, color: 'bg-gray-100 text-gray-800', icon: '⚪' };
+        return config || { label: estado, color: 'bg-gray-100 text-gray-800', icon: Circle };
     };
 
     const filteredCotizaciones = cotizaciones.filter(c => {
@@ -201,7 +201,7 @@ export default function CotizacionesPage() {
                         <option value="">Todos los estados</option>
                         {ESTADOS_COTIZACION.map(estado => (
                             <option key={estado.value} value={estado.value}>
-                                {estado.icon} {estado.label}
+                                {estado.label}
                             </option>
                         ))}
                     </select>
@@ -216,12 +216,14 @@ export default function CotizacionesPage() {
                                 key={estado.value}
                                 onClick={() => setFilterEstado(filterEstado === estado.value ? '' : estado.value)}
                                 className={`p-3 rounded-xl border transition-all ${filterEstado === estado.value
-                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                        : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-gray-300'
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                    : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-gray-300'
                                     }`}
                             >
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white">{count}</div>
-                                <div className="text-xs text-gray-500">{estado.icon} {estado.label}</div>
+                                <div className="text-xs text-gray-500 flex items-center justify-center gap-1">
+                                    <estado.icon size={14} /> {estado.label}
+                                </div>
                             </button>
                         );
                     })}
@@ -292,7 +294,7 @@ export default function CotizacionesPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${estadoBadge.color}`}>
-                                                        {estadoBadge.icon} {estadoBadge.label}
+                                                        <estadoBadge.icon size={12} /> {estadoBadge.label}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -432,7 +434,7 @@ export default function CotizacionesPage() {
                                     >
                                         {ESTADOS_COTIZACION.map(estado => (
                                             <option key={estado.value} value={estado.value}>
-                                                {estado.icon} {estado.label}
+                                                {estado.label}
                                             </option>
                                         ))}
                                     </select>
@@ -510,110 +512,117 @@ export default function CotizacionesPage() {
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
             {/* Detail Sidebar */}
-            {selectedCotizacion && (
-                <div className="fixed inset-0 z-50 flex">
-                    <div className="flex-1 bg-black/30" onClick={() => setSelectedCotizacion(null)} />
-                    <div className="w-full max-w-md bg-white dark:bg-slate-900 shadow-xl overflow-y-auto">
-                        <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
-                            <div>
-                                <span className="font-mono text-sm text-blue-600">{selectedCotizacion.codigo_cotizacion}</span>
-                                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                                    {selectedCotizacion.cliente_nombre}
-                                </h2>
-                            </div>
-                            <button onClick={() => setSelectedCotizacion(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div>
-                                <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${getEstadoBadge(selectedCotizacion.estado).color}`}>
-                                    {getEstadoBadge(selectedCotizacion.estado).icon} {getEstadoBadge(selectedCotizacion.estado).label}
-                                </span>
-                            </div>
-
-                            <div className="space-y-4">
+            {
+                selectedCotizacion && (
+                    <div className="fixed inset-0 z-50 flex">
+                        <div className="flex-1 bg-black/30" onClick={() => setSelectedCotizacion(null)} />
+                        <div className="w-full max-w-md bg-white dark:bg-slate-900 shadow-xl overflow-y-auto">
+                            <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Maquinaria</p>
-                                    <p className="font-medium text-gray-900 dark:text-white">{selectedCotizacion.maquinaria}</p>
+                                    <span className="font-mono text-sm text-blue-600">{selectedCotizacion.codigo_cotizacion}</span>
+                                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                                        {selectedCotizacion.cliente_nombre}
+                                    </h2>
+                                </div>
+                                <button onClick={() => setSelectedCotizacion(null)} className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-6">
+                                <div>
+                                    <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${getEstadoBadge(selectedCotizacion.estado).color}`}>
+                                        {(() => {
+                                            const BadgeIcon = getEstadoBadge(selectedCotizacion.estado).icon;
+                                            return <BadgeIcon size={16} />;
+                                        })()}
+                                        {getEstadoBadge(selectedCotizacion.estado).label}
+                                    </span>
                                 </div>
 
-                                {selectedCotizacion.cliente_empresa && (
+                                <div className="space-y-4">
                                     <div>
-                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Empresa</p>
-                                        <p className="text-gray-900 dark:text-white">{selectedCotizacion.cliente_empresa}</p>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Maquinaria</p>
+                                        <p className="font-medium text-gray-900 dark:text-white">{selectedCotizacion.maquinaria}</p>
                                     </div>
-                                )}
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Email</p>
-                                        <p className="text-gray-900 dark:text-white text-sm">{selectedCotizacion.cliente_email}</p>
-                                    </div>
-                                    {selectedCotizacion.cliente_telefono && (
+                                    {selectedCotizacion.cliente_empresa && (
                                         <div>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Teléfono</p>
-                                            <p className="text-gray-900 dark:text-white text-sm">{selectedCotizacion.cliente_telefono}</p>
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Empresa</p>
+                                            <p className="text-gray-900 dark:text-white">{selectedCotizacion.cliente_empresa}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Email</p>
+                                            <p className="text-gray-900 dark:text-white text-sm">{selectedCotizacion.cliente_email}</p>
+                                        </div>
+                                        {selectedCotizacion.cliente_telefono && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Teléfono</p>
+                                                <p className="text-gray-900 dark:text-white text-sm">{selectedCotizacion.cliente_telefono}</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {selectedCotizacion.presupuesto_cliente ? (
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Presupuesto</p>
+                                                <p className="text-gray-900 dark:text-white font-medium">
+                                                    ${selectedCotizacion.presupuesto_cliente.toLocaleString('es-CL')}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                        {selectedCotizacion.precio_cotizado ? (
+                                            <div>
+                                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Precio Cotizado</p>
+                                                <p className="text-green-600 dark:text-green-400 font-bold text-lg">
+                                                    ${selectedCotizacion.precio_cotizado.toLocaleString('es-CL')}
+                                                </p>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    {selectedCotizacion.fecha_seguimiento && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Seguimiento</p>
+                                            <p className="text-gray-900 dark:text-white">{formatDate(selectedCotizacion.fecha_seguimiento)}</p>
+                                        </div>
+                                    )}
+
+                                    {selectedCotizacion.notas && (
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Notas</p>
+                                            <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{selectedCotizacion.notas}</p>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    {selectedCotizacion.presupuesto_cliente ? (
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Presupuesto</p>
-                                            <p className="text-gray-900 dark:text-white font-medium">
-                                                ${selectedCotizacion.presupuesto_cliente.toLocaleString('es-CL')}
-                                            </p>
-                                        </div>
-                                    ) : null}
-                                    {selectedCotizacion.precio_cotizado ? (
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Precio Cotizado</p>
-                                            <p className="text-green-600 dark:text-green-400 font-bold text-lg">
-                                                ${selectedCotizacion.precio_cotizado.toLocaleString('es-CL')}
-                                            </p>
-                                        </div>
-                                    ) : null}
+                                <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex gap-2">
+                                    <button
+                                        onClick={() => { handleEdit(selectedCotizacion); setSelectedCotizacion(null); }}
+                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
+                                    >
+                                        <Edit2 size={16} />
+                                        Editar
+                                    </button>
+                                    <button
+                                        onClick={() => { handleDelete(selectedCotizacion.id!, selectedCotizacion.codigo_cotizacion); setSelectedCotizacion(null); }}
+                                        className="px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 rounded-xl font-medium"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
                                 </div>
-
-                                {selectedCotizacion.fecha_seguimiento && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Fecha Seguimiento</p>
-                                        <p className="text-gray-900 dark:text-white">{formatDate(selectedCotizacion.fecha_seguimiento)}</p>
-                                    </div>
-                                )}
-
-                                {selectedCotizacion.notas && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Notas</p>
-                                        <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{selectedCotizacion.notas}</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex gap-2">
-                                <button
-                                    onClick={() => { handleEdit(selectedCotizacion); setSelectedCotizacion(null); }}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
-                                >
-                                    <Edit2 size={16} />
-                                    Editar
-                                </button>
-                                <button
-                                    onClick={() => { handleDelete(selectedCotizacion.id!, selectedCotizacion.codigo_cotizacion); setSelectedCotizacion(null); }}
-                                    className="px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 rounded-xl font-medium"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <ConfirmDeleteModal
                 isOpen={deleteModal.isOpen}
@@ -622,6 +631,6 @@ export default function CotizacionesPage() {
                 title="Eliminar Cotización"
                 message={`¿Estás seguro de eliminar la cotización "${deleteModal.code}"? Esta acción no se puede deshacer.`}
             />
-        </DashboardLayout>
+        </DashboardLayout >
     );
 }

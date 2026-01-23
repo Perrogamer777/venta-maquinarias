@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             name: data.businessName || data.companyName || doc.id
                         };
                     });
-                    console.log('✅ Tenants loaded:', tenants.length);
+                    console.log('[Auth] Tenants loaded:', tenants.length);
                     setUserTenants(tenants);
                 } else {
                     // Regular user: check their profile for allowed tenants
@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         setUserTenants(tenants);
                     } else {
                         // No user profile found - try fallback
-                        console.warn('⚠️ No user profile found, trying fallback load...');
+                        console.warn('[Auth] No user profile found, trying fallback load...');
 
                         try {
                             // Fallback: load from 'clients'
@@ -104,19 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                                         name: data.businessName || data.companyName || doc.id
                                     };
                                 });
-                                console.log('✅ Fallback: Found tenants:', tenants.length);
+                                console.log('[Auth] Fallback: Found tenants:', tenants.length);
                                 setUserTenants(tenants);
                             } else {
                                 setUserTenants([]);
                             }
                         } catch (fallbackError) {
-                            console.error('❌ Fallback failed:', fallbackError);
+                            console.error('[Auth] Fallback failed:', fallbackError);
                             setUserTenants([]);
                         }
                     }
                 }
             } catch (error) {
-                console.error('❌ Error loading user tenants:', error);
+                console.error('[Auth] Error loading user tenants:', error);
                 setUserTenants([]);
             } finally {
                 setLoadingTenants(false);

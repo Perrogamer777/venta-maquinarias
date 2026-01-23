@@ -258,9 +258,9 @@ export default function ConversacionesPage() {
 
     // Templates de respuestas rápidas
     const quickReplies = [
-        '¡Hola! 👋 ¿En qué puedo ayudarte?',
+        '¡Hola! ¿En qué puedo ayudarte?',
         'Gracias por tu consulta, revisaré la disponibilidad.',
-        'Tu reserva ha sido confirmada ✅',
+        'Tu reserva ha sido confirmada',
         '¿Necesitas algo más?',
     ];
 

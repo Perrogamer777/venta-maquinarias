@@ -284,268 +284,197 @@ export default function HomePage() {
 
   return (
     <DashboardLayout>
-      <div className="animate-fade-in space-y-6">
+      <div className="animate-fade-in space-y-6 max-w-[1600px] mx-auto">
         {/* Welcome Header */}
         <div className="mb-2">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            ¡Hola, Vendedor! <span className="text-2xl">🚜</span>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            ¡Hola, Vendedor!
+            <Truck size={28} className="text-lime-600" />
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 capitalize">
+          <p className="text-gray-500 dark:text-gray-400 text-base mt-2 capitalize font-medium">
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: es })}
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {statCards.map((stat, index) => (
-            <div key={stat.label} className={`animate-fade-in-up stagger-${Math.min(index + 1, 5)}`}>
+        {/* Stats Grid - Top Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {statCards.slice(0, 4).map((stat, index) => (
+            <div key={stat.label} className={`animate-fade-in-up stagger-${index + 1}`}>
               <Link
                 href={stat.href}
-                className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-100 dark:border-slate-800 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group block"
+                className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group block h-full flex flex-col justify-between"
               >
-                <div className={`w-11 h-11 rounded-xl ${stat.bgColor} flex items-center justify-center mb-4`}>
+                <div className={`w-10 h-10 rounded-2xl ${stat.bgColor} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300`}>
                   <stat.icon size={20} className={stat.iconColor} />
                 </div>
-                <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-                  {loading ? (
-                    <div className="h-8 w-12 bg-gray-100 dark:bg-slate-800 animate-pulse rounded-lg" />
-                  ) : stat.isCurrency ? (
-                    `$${stat.value.toLocaleString('es-CL')}`
-                  ) : (
-                    stat.value.toLocaleString()
-                  )}
+                <div>
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">
+                    {loading ? (
+                      <div className="h-8 w-16 bg-gray-100 dark:bg-slate-800 animate-pulse rounded-lg" />
+                    ) : (
+                      stat.value.toLocaleString()
+                    )}
+                  </div>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{stat.label}</p>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
               </Link>
             </div>
           ))}
         </div>
 
+        {/* Ventas Banner */}
+        <div className="animate-fade-in-up stagger-5">
+          <Link href="/estadisticas" className="relative overflow-hidden bg-gradient-to-r from-green-800 to-green-700 rounded-3xl p-8 shadow-2xl flex items-center justify-between group">
+            <div className="relative z-10 text-white">
+              <p className="text-lime-300 font-semibold mb-1 text-sm tracking-wider uppercase">Ventas del Mes</p>
+              <h2 className="text-5xl font-bold tracking-tight">
+                {loading ? '...' : `$${stats.ventasMes.toLocaleString('es-CL')}`}
+              </h2>
+            </div>
+            <div className="bg-white/10 p-4 rounded-full backdrop-blur-sm group-hover:bg-white/20 transition-all duration-300">
+              <DollarSign size={48} className="text-lime-300" />
+            </div>
+            {/* Decorative circle */}
+            <div className="absolute -right-10 -bottom-20 w-64 h-64 bg-lime-500/10 rounded-full blur-3xl pointer-events-none group-hover:bg-lime-500/20 transition-all duration-500"></div>
+          </Link>
+        </div>
+
         {/* Main Content Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Recent Activities - Left side, spans 2 columns */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 dark:text-white">Cotizaciones Recientes</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Recent Cotizaciones */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
+            <div className="px-8 py-6 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between bg-gray-50/30 dark:bg-slate-800/30">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Cotizaciones Recientes</h3>
               <Link
                 href="/cotizaciones"
-                className="text-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1 transition-colors"
+                className="text-sm font-medium text-gray-500 hover:text-green-700 dark:hover:text-green-400 flex items-center gap-1 transition-colors"
               >
                 Ver todo
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </Link>
             </div>
 
-            {loading ? (
-              <div className="p-4 space-y-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-16 bg-gray-50 dark:bg-slate-800 animate-pulse rounded-xl" />
-                ))}
-              </div>
-            ) : recentActivities.length === 0 ? (
-              <div className="p-12 text-center">
-                <FileText size={32} className="mx-auto text-gray-300 dark:text-gray-700 mb-2" />
-                <p className="text-gray-500 text-sm">No hay cotizaciones recientes</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-50 dark:divide-slate-800">
-                {recentActivities.map((activity) => {
-                  // Get initials from the title (name)
-                  const nameParts = activity.title.split(' ');
-                  const initials = nameParts.length >= 2
-                    ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase()
-                    : activity.title.substring(0, 2).toUpperCase();
-
-                  const estadoBadge = getEstadoBadge(activity.estado);
-
-                  return (
-                    <Link
-                      key={activity.id}
-                      href={activity.link}
-                      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      {/* Avatar with initials */}
-                      <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-gray-600 dark:text-gray-300 font-semibold text-sm flex-shrink-0">
-                        {initials}
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {activity.title}
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                          {activity.description}
-                        </p>
-                      </div>
-
-                      {/* Right side - date and badge */}
-                      <div className="flex-shrink-0 text-right flex flex-col items-end gap-1">
-                        <span className="text-xs text-gray-400 dark:text-gray-500">
-                          {format(activity.timestamp, 'd MMM', { locale: es })}
-                        </span>
-                        <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full ${estadoBadge.color}`}>
-                          {estadoBadge.icon} {estadoBadge.label}
-                        </span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Cotizaciones Chart - Right side */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-gray-100 dark:border-slate-800">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">Tendencia Cotizaciones</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Últimos 7 días</p>
-              </div>
-              {trendPercentage !== 0 && (
-                <div className={`flex items-center gap-1 text-sm font-semibold ${trendPercentage > 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-600 dark:text-rose-400'
-                  }`}>
-                  {trendPercentage > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                  <span>{trendPercentage > 0 ? '+' : ''}{trendPercentage}%</span>
+            <div className="flex-1 min-h-[300px] flex flex-col justify-center">
+              {loading ? (
+                <div className="p-6 space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-20 bg-gray-50 dark:bg-slate-800 animate-pulse rounded-2xl" />
+                  ))}
+                </div>
+              ) : recentActivities.length === 0 ? (
+                <div className="text-center p-12">
+                  <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FileText size={32} className="text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 font-medium">No hay cotizaciones recientes</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100 dark:divide-slate-800">
+                  {recentActivities.map((activity) => {
+                    const estadoBadge = getEstadoBadge(activity.estado);
+                    return (
+                      <Link
+                        key={activity.id}
+                        href={activity.link}
+                        className="flex items-center gap-5 px-8 py-5 hover:bg-green-50/50 dark:hover:bg-slate-800/50 transition-colors group"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-gray-500 dark:text-gray-400 group-hover:bg-white group-hover:shadow-md transition-all duration-300">
+                          <FileText size={20} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-bold text-gray-900 dark:text-white text-base truncate mb-1">{activity.title}</h4>
+                          <p className="text-sm text-gray-500 truncate">{activity.description}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${estadoBadge.color}`}>
+                            {/* Icon rendered as component if possible, else fallback */}
+                            {/* Note: In this file context, getEstadoBadge returns an object with 'icon' property. 
+                                          If getEstadoBadge returns a component class, we can render it. 
+                                          We need to check how it's defined. Based on previous context it returns an icon component or a string.
+                                          Let's safely assume we render it if it's not a string, or handle string case.
+                                          However, simplified for this specific design requirement based on image: just text primarily or icon + text.
+                                      */}
+                            {typeof estadoBadge.icon !== 'string' && <estadoBadge.icon size={12} strokeWidth={3} />}
+                            {estadoBadge.label}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Week totals */}
-            <div className="flex gap-6 mb-4">
-              <div>
-                <span className="text-2xl font-bold text-gray-900 dark:text-white">{weekTotals.thisWeek}</span>
-                <p className="text-xs text-gray-500">Esta semana</p>
-              </div>
-              <div>
-                <span className="text-2xl font-bold text-gray-400">{weekTotals.lastWeek}</span>
-                <p className="text-xs text-gray-500">Semana pasada</p>
+          {/* Trend Chart */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col h-full">
+            <div className="mb-8">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">Tendencia Cotizaciones</h3>
+              <p className="text-sm text-gray-500">Últimos 7 días</p>
+
+              <div className="flex items-end gap-4 mt-6">
+                <div className="text-center">
+                  <span className="text-4xl font-bold text-gray-900 dark:text-white block">{weekTotals.thisWeek}</span>
+                  <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Esta semana</span>
+                </div>
+                <div className="text-center pl-4 border-l border-gray-200 dark:border-slate-700">
+                  <span className="text-4xl font-bold text-gray-400 block">{weekTotals.lastWeek}</span>
+                  <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">Semana pasada</span>
+                </div>
               </div>
             </div>
 
-            {/* Bar Chart */}
-            <div className="relative h-40">
-              {/* Grid lines */}
-              <div className="absolute inset-0 flex flex-col justify-between">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="border-b border-gray-100 dark:border-gray-800" />
-                ))}
-              </div>
-
-              {/* Bars with gradient effect */}
-              <div className="absolute inset-0 flex items-end justify-between gap-2 pt-4 pb-6">
-                {chartData.map((dataPoint, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {dataPoint.count}
+            <div className="flex-1 relative min-h-[150px] w-full">
+              {/* Simple Area Chart Visualization */}
+              <div className="absolute inset-0 flex items-end justify-between px-2 gap-2">
+                {chartData.map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2 flex-1 h-full justify-end group">
+                    <div className="w-full bg-green-100 dark:bg-green-900/20 rounded-t-lg relative overflow-hidden transition-all duration-500 hover:bg-green-200 dark:hover:bg-green-800/30"
+                      style={{ height: `${(d.count / (maxChartValue || 1)) * 100}%` }}>
+                      <div className="absolute bottom-0 left-0 right-0 h-1 bg-green-500"></div>
                     </div>
-                    <div
-                      className="w-full bg-gradient-to-t from-blue-500 to-blue-300 dark:from-blue-600 dark:to-blue-400 rounded-t-md transition-all duration-500 hover:from-blue-400 hover:to-blue-200"
-                      style={{ height: `${(dataPoint.count / maxChartValue) * 100}%`, minHeight: dataPoint.count > 0 ? '8px' : '0' }}
-                    />
+                    <span className="text-xs font-medium text-gray-400 group-hover:text-green-600 transition-colors">{d.day.charAt(0)}</span>
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* X-axis labels */}
-            <div className="flex justify-between mt-2">
-              {chartData.map((dataPoint, idx) => (
-                <span key={idx} className="text-xs text-gray-400 flex-1 text-center">{dataPoint.day}</span>
-              ))}
+              {/* Smooth Curve SVG Overlay (Decorative) */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveAspectRatio="none">
+                <path d={`M0 ${150} C ${chartData.map((d, i) => `${(i * (100 / 6))}% ${150 - ((d.count / maxChartValue) * 150)}`).join(', ')}`} fill="none" stroke="currentColor" className="text-green-500" strokeWidth="2" />
+              </svg>
             </div>
           </div>
         </div>
 
-        {/* Maquinaria Stats */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <Truck size={20} className="text-gray-500" />
-              <h3 className="font-semibold text-gray-900 dark:text-white">Cotizaciones por {nomenclature.units.singular}</h3>
-            </div>
-            <Link
-              href="/inventario"
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-            >
-              Ver Inventario
-              <ChevronRight size={14} />
+        {/* Inventory Summary */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-gray-100 dark:border-slate-800 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+              <Truck size={20} className="text-green-600" />
+              Cotizaciones por Maquinaria
+            </h3>
+            <Link href="/inventario" className="text-sm font-semibold text-green-600 hover:text-green-700 flex items-center gap-1">
+              Ver Inventario <ChevronRight size={16} />
             </Link>
           </div>
 
-          {loading ? (
-            <div className="h-32 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-xl" />
-          ) : maquinariaStats.length === 0 ? (
-            <p className="text-gray-500 text-sm">No hay cotizaciones activas</p>
-          ) : (
-            <div className="flex items-center gap-8">
-              {/* Donut Chart */}
-              <div className="relative w-32 h-32 flex-shrink-0">
-                <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                  {(() => {
-                    const total = maquinariaStats.reduce((sum, m) => sum + m.cotizaciones, 0);
-                    let cumulativePercent = 0;
-                    const colorMap: Record<string, string> = {
-                      'bg-blue-500': '#3b82f6',
-                      'bg-emerald-500': '#10b981',
-                      'bg-purple-500': '#a855f7',
-                      'bg-amber-500': '#f59e0b',
-                      'bg-rose-500': '#f43f5e',
-                    };
-
-                    return maquinariaStats.map((maquinaria, idx) => {
-                      const percent = (maquinaria.cotizaciones / total) * 100;
-                      const strokeDasharray = `${percent} ${100 - percent}`;
-                      const strokeDashoffset = -cumulativePercent;
-                      cumulativePercent += percent;
-
-                      return (
-                        <circle
-                          key={maquinaria.name}
-                          cx="18"
-                          cy="18"
-                          r="15.915"
-                          fill="none"
-                          stroke={colorMap[maquinaria.color] || '#6b7280'}
-                          strokeWidth="3.5"
-                          strokeDasharray={strokeDasharray}
-                          strokeDashoffset={strokeDashoffset}
-                          className="transition-all duration-500"
-                        />
-                      );
-                    });
-                  })()}
-                </svg>
-                {/* Center text */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {maquinariaStats.reduce((sum, m) => sum + m.cotizaciones, 0)}
-                  </span>
-                  <span className="text-xs text-gray-500">total</span>
+          {/* Simple Horizontal Bar or Pill List */}
+          <div className="flex flex-wrap gap-4">
+            {loading ? (
+              <div className="h-10 bg-gray-50 w-full animate-pulse rounded-full"></div>
+            ) : maquinariaStats.length === 0 ? (
+              <p className="text-gray-500 text-sm">No hay datos disponibles</p>
+            ) : (
+              maquinariaStats.map((stat) => (
+                <div key={stat.name} className="flex items-center gap-3 pl-2 pr-4 py-2 bg-gray-50 dark:bg-slate-800/50 rounded-full border border-gray-100 dark:border-slate-700">
+                  <div className={`w-2.5 h-2.5 rounded-full ${stat.color}`}></div>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{stat.name}</span>
+                  <span className="text-sm font-bold text-gray-900 dark:text-white border-l border-gray-200 dark:border-slate-600 pl-3">{stat.cotizaciones}</span>
                 </div>
-              </div>
-
-              {/* Legend */}
-              <div className="flex-1 space-y-2">
-                {maquinariaStats.map((maquinaria) => {
-                  const total = maquinariaStats.reduce((sum, m) => sum + m.cotizaciones, 0);
-                  const percent = Math.round((maquinaria.cotizaciones / total) * 100);
-                  return (
-                    <div key={maquinaria.name} className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${maquinaria.color}`} />
-                      <span className="text-sm text-gray-600 dark:text-gray-400 flex-1 truncate">{maquinaria.name}</span>
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">{maquinaria.cotizaciones}</span>
-                      <span className="text-xs text-gray-400 w-10 text-right">{percent}%</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
-    </DashboardLayout >
+    </DashboardLayout>
   );
 }

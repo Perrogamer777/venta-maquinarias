@@ -71,38 +71,40 @@ export default function Sidebar() {
         { href: getHref('/feedback'), icon: MessageSquarePlus, label: 'Sugerencias' },
     ];
 
-    const NavLink = ({ item }: { item: { href: string; icon: React.ComponentType<{ size?: number; className?: string }>; label: string } }) => {
+    const NavLink = ({ item }: { item: { href: string; icon: React.ComponentType<{ size?: number; className?: string; strokeWidth?: number }>; label: string } }) => {
         const isActive = pathname === item.href;
         return (
             <Link
                 href={item.href}
-                className={`sidebar-item text-sm ${isActive ? 'sidebar-item-active' : ''}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
+                    ? 'bg-lime-400 text-green-900 font-semibold shadow-lg shadow-lime-400/20'
+                    : 'text-gray-200 hover:text-white hover:bg-white/10'
+                    }`}
             >
-                <item.icon size={18} />
-                {!isCollapsed && <span>{item.label}</span>}
+                <item.icon size={20} strokeWidth={isActive ? 2.5 : 2} className={isActive ? 'animate-pulse-slow' : 'group-hover:scale-110 transition-transform'} />
+                {!isCollapsed && <span className="text-sm">{item.label}</span>}
             </Link>
         );
     };
 
     return (
         <aside
-            className={`fixed left-0 top-0 h-screen ${isCollapsed ? 'w-16' : 'w-56'} flex flex-col transition-all duration-300 ease-in-out z-50`}
-            style={{ background: 'hsl(var(--sidebar-background))' }}
+            className={`fixed left-0 top-0 h-screen ${isCollapsed ? 'w-24' : 'w-72'} flex flex-col transition-all duration-300 ease-in-out z-50 shadow-xl`}
+            style={{ background: 'hsl(var(--sidebar-background))', borderColor: 'hsl(var(--sidebar-border))', borderWidth: '0 1px 0 0' }}
         >
             {/* Logo & Company Header */}
-            <div className="px-4 py-5">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ background: 'hsl(var(--sidebar-accent))' }}>
-                        <Truck size={20} style={{ color: 'hsl(var(--sidebar-foreground))' }} />
+            <div className="px-6 py-6 mb-2">
+                <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-4'}`}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-lime-400/20 text-lime-400">
+                        <Truck size={22} strokeWidth={2.5} />
                     </div>
                     {!isCollapsed && (
-                        <div className="flex-1 min-w-0">
-                            <h1 className="font-bold text-sm" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
+                        <div className="flex-1 min-w-0 animate-fade-in">
+                            <h1 className="font-bold text-lg leading-tight text-white tracking-tight">
                                 {companyName}
                             </h1>
-                            <p className="text-xs" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>
-                                {companySubtitle}
+                            <p className="text-xs text-gray-400 font-medium tracking-wide">
+                                Panel de Control
                             </p>
                         </div>
                     )}
@@ -110,19 +112,17 @@ export default function Sidebar() {
             </div>
 
             {/* User Card */}
-            <div className="px-3 pb-4">
-                <div className={`flex items-center gap-3 p-2.5 rounded-xl ${isCollapsed ? 'justify-center' : ''}`}
-                    style={{ background: 'hsl(var(--sidebar-accent))' }}>
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0"
-                        style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}>
+            <div className="px-4 mb-6">
+                <div className={`flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 transition-all hover:bg-white/10 ${isCollapsed ? 'justify-center' : ''}`}>
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 bg-lime-400 text-green-900 border-2 border-green-900">
                         {user?.email?.charAt(0).toUpperCase() || 'A'}
                     </div>
                     {!isCollapsed && (
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate" style={{ color: 'hsl(var(--sidebar-foreground))' }}>
+                            <p className="text-sm font-semibold text-white truncate leading-none mb-1">
                                 {user?.email?.split('@')[0] || 'Admin'}
                             </p>
-                            <p className="text-xs" style={{ color: 'hsl(var(--sidebar-foreground) / 0.6)' }}>
+                            <p className="text-xs text-lime-400/80 font-medium">
                                 Vendedor
                             </p>
                         </div>
@@ -131,16 +131,15 @@ export default function Sidebar() {
             </div>
 
             {/* Main Navigation */}
-            <nav className="flex-1 px-3 py-2 overflow-y-auto">
+            <nav className="flex-1 px-3 py-2 overflow-y-auto overflow-x-hidden space-y-6">
                 {/* Principal Section */}
-                <div className="mb-5">
+                <div>
                     {!isCollapsed && (
-                        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider"
-                            style={{ color: 'hsl(var(--sidebar-foreground) / 0.4)' }}>
+                        <p className="px-4 mb-3 text-[11px] font-bold uppercase tracking-widest text-gray-400">
                             Principal
                         </p>
                     )}
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-1">
                         {mainNavItems.map((item) => (
                             <li key={item.href}>
                                 <NavLink item={item} />
@@ -150,14 +149,13 @@ export default function Sidebar() {
                 </div>
 
                 {/* Gestión Section */}
-                <div className="mb-5">
+                <div>
                     {!isCollapsed && (
-                        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider"
-                            style={{ color: 'hsl(var(--sidebar-foreground) / 0.4)' }}>
+                        <p className="px-4 mb-3 text-[11px] font-bold uppercase tracking-widest text-gray-400">
                             Gestión
                         </p>
                     )}
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-1">
                         {managementItems.map((item) => (
                             <li key={item.href}>
                                 <NavLink item={item} />
@@ -169,12 +167,11 @@ export default function Sidebar() {
                 {/* Sistema Section */}
                 <div>
                     {!isCollapsed && (
-                        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider"
-                            style={{ color: 'hsl(var(--sidebar-foreground) / 0.4)' }}>
+                        <p className="px-4 mb-3 text-[11px] font-bold uppercase tracking-widest text-gray-400">
                             Sistema
                         </p>
                     )}
-                    <ul className="space-y-0.5">
+                    <ul className="space-y-1">
                         {systemItems.map((item) => (
                             <li key={item.href}>
                                 <NavLink item={item} />
@@ -185,32 +182,32 @@ export default function Sidebar() {
             </nav>
 
             {/* Bottom Actions */}
-            <div className="px-3 py-4 space-y-1" style={{ borderTop: '1px solid hsl(var(--sidebar-border))' }}>
+            <div className="px-4 py-4 space-y-2 border-t border-white/5 bg-black/10">
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    className={`sidebar-item text-sm w-full ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 ${isCollapsed ? 'justify-center' : ''}`}
                 >
                     {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-                    {!isCollapsed && <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>}
+                    {!isCollapsed && <span className="text-sm font-medium">{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>}
                 </button>
 
                 {/* Logout */}
                 <button
                     onClick={() => logout()}
-                    className={`sidebar-item text-sm w-full ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`flex items-center gap-3 w-full p-2.5 rounded-xl text-gray-300 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 group ${isCollapsed ? 'justify-center' : ''}`}
                 >
-                    <LogOut size={18} />
-                    {!isCollapsed && <span>Cerrar Sesión</span>}
+                    <LogOut size={18} className="group-hover:translate-x-1 transition-transform" />
+                    {!isCollapsed && <span className="text-sm font-medium">Cerrar Sesión</span>}
                 </button>
 
                 {/* Collapse Button */}
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    className={`w-full flex items-center justify-center py-3 mt-2 transition-all duration-200`}
-                    style={{ color: 'hsl(var(--sidebar-foreground) / 0.7)' }}
+                    width="full"
+                    className="flex items-center justify-center py-2 text-gray-400 hover:text-white transition-colors"
                 >
-                    <ChevronLeft size={18} className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
+                    <ChevronLeft size={20} className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
                 </button>
             </div>
         </aside>

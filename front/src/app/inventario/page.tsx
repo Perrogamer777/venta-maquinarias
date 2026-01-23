@@ -10,13 +10,15 @@ import type { Maquinaria } from '@/types';
 import { CATEGORIAS_MAQUINARIA, ESTADOS_STOCK } from '@/lib/businessTypes';
 import {
     Plus, Trash2, Edit2, Save, X, Truck, FileText,
-    DollarSign, ImageIcon, Tag, Wrench, Clock, Package
+    DollarSign, ImageIcon, Tag, Wrench, Clock, Package, Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function InventarioPage() {
     const { nomenclature } = useConfig();
     const [maquinarias, setMaquinarias] = useState<Maquinaria[]>([]);
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string; name: string }>({
@@ -38,7 +40,6 @@ export default function InventarioPage() {
         pdfUrl: '',
         precioReferencia: 0,
         estadoStock: 'DISPONIBLE',
-        destacado: false,
         activa: true,
         tags: []
     });
@@ -67,16 +68,27 @@ export default function InventarioPage() {
     };
 
     const handleSave = async () => {
+        if (!formData.nombre?.trim()) {
+            toast.error('El nombre es requerido');
+            return;
+        }
+
+        setSaving(true);
         try {
             if (editingId) {
                 await setDoc(doc(db, 'maquinarias', editingId), formData, { merge: true });
+                toast.success('Maquinaria actualizada correctamente');
             } else {
                 await addDoc(collection(db, 'maquinarias'), formData);
+                toast.success('Maquinaria creada exitosamente');
             }
             await fetchData();
             resetForm();
         } catch (error) {
             console.error('Error saving maquinaria:', error);
+            toast.error('Error al guardar la maquinaria');
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -87,10 +99,12 @@ export default function InventarioPage() {
     const confirmDelete = async () => {
         try {
             await deleteDoc(doc(db, 'maquinarias', deleteModal.id));
+            toast.success('Maquinaria eliminada correctamente');
             await fetchData();
             setDeleteModal({ isOpen: false, id: '', name: '' });
         } catch (error) {
             console.error('Error deleting maquinaria:', error);
+            toast.error('Error al eliminar la maquinaria');
         }
     };
 
@@ -113,7 +127,6 @@ export default function InventarioPage() {
             pdfUrl: '',
             precioReferencia: 0,
             estadoStock: 'DISPONIBLE',
-            destacado: false,
             activa: true,
             tags: []
         });
@@ -202,8 +215,8 @@ export default function InventarioPage() {
 
                 {/* Form Modal */}
                 {showForm && (
-                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-scale-in">
                             <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
                                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                                     {editingId ? 'Editar' : 'Nueva'} {nomenclature.units.singular}
@@ -445,15 +458,6 @@ export default function InventarioPage() {
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={formData.destacado}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, destacado: e.target.checked }))}
-                                            className="w-4 h-4 rounded border-gray-300"
-                                        />
-                                        <span className="text-sm text-gray-700 dark:text-gray-300">Destacado</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
                                             checked={formData.activa}
                                             onChange={(e) => setFormData(prev => ({ ...prev, activa: e.target.checked }))}
                                             className="w-4 h-4 rounded border-gray-300"
@@ -467,16 +471,27 @@ export default function InventarioPage() {
                             <div className="sticky bottom-0 bg-white dark:bg-slate-900 px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
                                 <button
                                     onClick={resetForm}
-                                    className="px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
+                                    disabled={saving}
+                                    className="px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={handleSave}
-                                    className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
+                                    disabled={saving}
+                                    className="flex items-center gap-2 px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                 >
-                                    <Save size={18} />
-                                    {editingId ? 'Guardar Cambios' : 'Crear Maquinaria'}
+                                    {saving ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            Guardando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            {editingId ? 'Guardar Cambios' : 'Crear Maquinaria'}
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -509,12 +524,12 @@ export default function InventarioPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {maquinarias.map(maquinaria => {
+                        {maquinarias.map((maquinaria, index) => {
                             const stockBadge = getStockBadge(maquinaria.estadoStock);
                             return (
                                 <div
                                     key={maquinaria.id}
-                                    className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden hover:shadow-lg transition-shadow"
+                                    className={`bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in-up stagger-${Math.min(index + 1, 6)}`}
                                 >
                                     {/* Image */}
                                     <div className="aspect-video bg-gray-100 dark:bg-slate-800 relative">
@@ -533,11 +548,6 @@ export default function InventarioPage() {
                                         <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-xs font-medium ${stockBadge.color}`}>
                                             {stockBadge.label}
                                         </span>
-                                        {maquinaria.destacado && (
-                                            <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                ⭐ Destacado
-                                            </span>
-                                        )}
                                     </div>
 
                                     {/* Content */}

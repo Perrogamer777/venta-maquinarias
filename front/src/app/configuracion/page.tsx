@@ -32,7 +32,7 @@ const defaultSettings: BotSettings = {
     tone: 'profesional',
     responseStyle: 'conciso',
     customInstructions: '',
-    greeting: '¡Hola! 👋 Soy {botName}, tu asistente de ventas de maquinaria. ¿En qué puedo ayudarte?',
+    greeting: '¡Hola! Soy {botName}, tu asistente de ventas de maquinaria. ¿En qué puedo ayudarte?',
     farewell: '¡Gracias por contactarnos! Si tienes más preguntas, no dudes en escribir.',
     unavailableMessage: 'En este momento ese equipo no está disponible. ¿Te gustaría consultar otras opciones?',
     maxResponseLength: 500,

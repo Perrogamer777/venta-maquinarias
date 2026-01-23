@@ -22,7 +22,7 @@ interface ConfigContextType {
 }
 
 const defaultSettings: CompanySettings = {
-    companyName: 'Mi Empresa',
+    companyName: 'MACI',
     companySubtitle: 'Panel de Control',
     businessType: 'cabins',
     nomenclature: DEFAULT_NOMENCLATURE

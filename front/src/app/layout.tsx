@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import { Sora, Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -8,15 +8,21 @@ import { SidebarProvider } from "@/contexts/SidebarContext";
 import { Providers } from "@/components/Providers";
 import { Toaster } from 'sonner';
 
-const dmSans = DM_Sans({
+const sora = Sora({
   subsets: ["latin"],
-  variable: "--font-dm-sans",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-sora",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Dashboard - Chatbot Reservas",
-  description: "Sistema de gestión de reservas",
+  title: "MACI - Dashboard",
+  description: "Sistema de gestión de venta de maquinaria",
 };
 
 export default function RootLayout({
@@ -26,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${dmSans.variable} font-sans`}>
+      <body className={`${sora.variable} ${inter.variable} font-sans`}>
         <Providers>
           <AuthProvider>
             <ThemeProvider>
@@ -43,4 +49,3 @@ export default function RootLayout({
     </html>
   );
 }
-

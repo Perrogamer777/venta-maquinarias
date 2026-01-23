@@ -159,7 +159,7 @@ export default function PipelinePage() {
                                         }`}>
                                         <div className="flex items-center justify-between mb-1">
                                             <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                                {estado.icon} {estado.label}
+                                                <estado.icon size={18} /> {estado.label}
                                             </h3>
                                             <span className="text-xs font-medium px-2 py-0.5 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-600">
                                                 {columns[estado.value]?.length || 0}
@@ -177,8 +177,8 @@ export default function PipelinePage() {
                                                 {...provided.droppableProps}
                                                 ref={provided.innerRef}
                                                 className={`flex-1 rounded-xl transition-colors p-2 ${snapshot.isDraggingOver
-                                                        ? 'bg-blue-50/50 dark:bg-blue-900/10'
-                                                        : 'bg-gray-50/50 dark:bg-slate-900/20'
+                                                    ? 'bg-blue-50/50 dark:bg-blue-900/10'
+                                                    : 'bg-gray-50/50 dark:bg-slate-900/20'
                                                     }`}
                                             >
                                                 {columns[estado.value]?.map((item, index) => (
@@ -193,8 +193,8 @@ export default function PipelinePage() {
                                                                 {...provided.draggableProps}
                                                                 {...provided.dragHandleProps}
                                                                 className={`mb-3 bg-white dark:bg-slate-900 p-4 rounded-xl border shadow-sm group hover:shadow-md transition-all ${snapshot.isDragging
-                                                                        ? 'shadow-lg rotate-2 border-blue-500 z-50'
-                                                                        : 'border-gray-100 dark:border-slate-800'
+                                                                    ? 'shadow-lg rotate-2 border-blue-500 z-50'
+                                                                    : 'border-gray-100 dark:border-slate-800'
                                                                     }`}
                                                                 style={provided.draggableProps.style}
                                                             >

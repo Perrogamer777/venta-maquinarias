@@ -9,114 +9,137 @@
 
 :root {
   /* Fondos principales */
-  --background: 40 33% 98%;
-  --foreground: 24 10% 15%;
+  --background: 40 20% 98%;
+  /* Cream Light */
+  --foreground: 150 20% 15%;
+  /* Dark Green/Black */
 
   /* Cards */
   --card: 0 0% 100%;
-  --card-foreground: 24 10% 15%;
+  --card-foreground: 150 20% 15%;
 
-  /* Primary - Verde bosque profundo */
-  --primary: 152 45% 25%;
-  --primary-foreground: 40 33% 98%;
+  /* Primary - Verde Bosque */
+  --primary: 145 45% 28%;
+  --primary-foreground: 0 0% 100%;
 
-  /* Secondary - Arena cálida */
-  --secondary: 35 30% 93%;
-  --secondary-foreground: 24 10% 25%;
+  /* Secondary */
+  --secondary: 40 15% 94%;
+  --secondary-foreground: 145 45% 28%;
 
-  /* Muted - Gris suave */
-  --muted: 30 15% 94%;
-  --muted-foreground: 24 10% 45%;
+  /* Muted */
+  --muted: 40 15% 94%;
+  --muted-foreground: 150 10% 45%;
 
-  /* Accent - Ámbar dorado */
-  --accent: 38 92% 50%;
-  --accent-foreground: 24 10% 10%;
+  /* Accent - Verde Oliva */
+  --accent: 80 35% 45%;
+  --accent-foreground: 0 0% 100%;
 
   /* Estados semánticos */
   --success: 142 71% 45%;
-  --warning: 38 92% 50%;
+  --warning: 43 96% 50%;
+  /* Dorado cosecha */
   --info: 199 89% 48%;
   --destructive: 0 72% 51%;
 
   /* Bordes */
-  --border: 30 20% 90%;
-  --input: 30 20% 88%;
-  --ring: 152 45% 25%;
+  --border: 150 20% 90%;
+  --input: 150 20% 90%;
+  --ring: 145 45% 28%;
   --radius: 0.75rem;
 
-  /* Sidebar - Bosque profundo */
-  --sidebar-background: 152 35% 18%;
-  --sidebar-foreground: 40 20% 90%;
-  --sidebar-accent: 152 30% 24%;
-  --sidebar-border: 152 25% 25%;
+  /* Sidebar - Bosque Profundo */
+  --sidebar-background: 150 25% 20%;
+  --sidebar-foreground: 40 20% 95%;
+  --sidebar-accent: 80 50% 55%;
+  /* Lime accent */
+  --sidebar-border: 150 25% 25%;
 
   /* Colores estadísticas */
   --stat-reservations: 199 89% 48%;
-  --stat-pending: 38 92% 50%;
+  --stat-pending: 43 96% 50%;
   --stat-checkin: 142 71% 45%;
   --stat-checkout: 280 65% 60%;
-  --stat-revenue: 152 45% 35%;
+  --stat-revenue: 145 45% 28%;
 }
 
 .dark {
-  --background: 24 10% 10%;
+  --background: 150 25% 10%;
   --foreground: 40 20% 95%;
 
-  --card: 24 10% 14%;
+  --card: 150 25% 12%;
   --card-foreground: 40 20% 95%;
 
-  --primary: 152 45% 45%;
-  --primary-foreground: 24 10% 10%;
+  --primary: 145 45% 45%;
+  --primary-foreground: 150 25% 10%;
 
-  --secondary: 24 10% 20%;
+  --secondary: 150 25% 15%;
   --secondary-foreground: 40 20% 90%;
 
-  --muted: 24 10% 18%;
-  --muted-foreground: 40 10% 60%;
+  --muted: 150 25% 15%;
+  --muted-foreground: 150 10% 60%;
 
-  --border: 24 10% 20%;
-  --input: 24 10% 20%;
-  --ring: 152 45% 45%;
+  --accent: 80 35% 55%;
+  --accent-foreground: 150 25% 10%;
 
-  --sidebar-background: 24 10% 8%;
+  --border: 150 25% 20%;
+  --input: 150 25% 20%;
+  --ring: 145 45% 45%;
+
+  --sidebar-background: 150 30% 8%;
   --sidebar-foreground: 40 20% 95%;
-  --sidebar-accent: 24 10% 15%;
-  --sidebar-border: 24 10% 18%;
+  --sidebar-accent: 80 35% 25%;
+  --sidebar-border: 150 30% 12%;
 }
 
 /* ============================================
-   TYPOGRAPHY - DM Sans
+   TYPOGRAPHY - Sora (Headings) + Inter (Body)
    ============================================ */
 
 body {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
-  font-size: 16px;
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  /* Slightly smaller body */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
+.h1,
+h2,
+.h2,
+h3,
+.h3,
+h4,
+.h4,
+h5,
+.h5,
+h6,
+.h6 {
+  font-family: var(--font-sora), system-ui, sans-serif;
+}
+
+h1,
 .h1 {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 h2,
 .h2 {
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   line-height: 1.3;
 }
 
 h3,
 .h3 {
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
   line-height: 1.4;
 }
