@@ -10,7 +10,7 @@ import type { Maquinaria } from '@/types';
 import { CATEGORIAS_MAQUINARIA, ESTADOS_STOCK } from '@/lib/businessTypes';
 import {
     Plus, Trash2, Edit2, Save, X, Truck, FileText,
-    DollarSign, ImageIcon, Tag, Wrench, Clock, Package, Loader2
+    DollarSign, ImageIcon, Tag, Wrench, Clock, Package, Loader2, Eye
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +21,7 @@ export default function InventarioPage() {
     const [saving, setSaving] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [viewingMaquinaria, setViewingMaquinaria] = useState<Maquinaria | null>(null);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; id: string; name: string }>({
         isOpen: false,
         id: '',
@@ -589,14 +590,23 @@ export default function InventarioPage() {
                                             )}
                                             <div className="flex gap-1">
                                                 <button
+                                                    onClick={() => setViewingMaquinaria(maquinaria)}
+                                                    className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                                                    title="Ver detalles"
+                                                >
+                                                    <Eye size={16} className="text-blue-500" />
+                                                </button>
+                                                <button
                                                     onClick={() => handleEdit(maquinaria)}
                                                     className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                                                    title="Editar"
                                                 >
                                                     <Edit2 size={16} className="text-gray-500" />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(maquinaria.id!, maquinaria.nombre)}
                                                     className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                    title="Eliminar"
                                                 >
                                                     <Trash2 size={16} className="text-red-500" />
                                                 </button>
@@ -609,6 +619,177 @@ export default function InventarioPage() {
                     </div>
                 )}
             </div>
+
+            {/* Detail View Modal */}
+            {viewingMaquinaria && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={() => setViewingMaquinaria(null)}>
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-scale-in" onClick={(e) => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="sticky top-0 bg-white dark:bg-slate-900 px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between z-10">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{viewingMaquinaria.nombre}</h2>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{viewingMaquinaria.categoria}</p>
+                            </div>
+                            <button
+                                onClick={() => setViewingMaquinaria(null)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
+                            {/* Images Gallery */}
+                            {viewingMaquinaria.imagenes && viewingMaquinaria.imagenes.length > 0 && (
+                                <div className="space-y-3">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <ImageIcon size={18} className="text-green-600" />
+                                        Imágenes
+                                    </h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                        {viewingMaquinaria.imagenes.map((img, i) => (
+                                            <img
+                                                key={i}
+                                                src={img}
+                                                alt={`${viewingMaquinaria.nombre} - ${i + 1}`}
+                                                className="w-full aspect-video object-cover rounded-xl border border-gray-200 dark:border-slate-700"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Description */}
+                            {viewingMaquinaria.descripcion && (
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <FileText size={18} className="text-green-600" />
+                                        Descripción
+                                    </h3>
+                                    <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{viewingMaquinaria.descripcion}</p>
+                                </div>
+                            )}
+
+                            {/* Technical Specs */}
+                            {viewingMaquinaria.especificacionesTecnicas && (
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <Wrench size={18} className="text-green-600" />
+                                        Especificaciones Técnicas
+                                    </h3>
+                                    <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                                        <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono">{viewingMaquinaria.especificacionesTecnicas}</pre>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Details Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {viewingMaquinaria.usoEquipo && (
+                                    <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">Uso del Equipo</p>
+                                        <p className="text-gray-900 dark:text-white">{viewingMaquinaria.usoEquipo}</p>
+                                    </div>
+                                )}
+
+                                {viewingMaquinaria.dimensiones && (
+                                    <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">Dimensiones</p>
+                                        <p className="text-gray-900 dark:text-white">{viewingMaquinaria.dimensiones}</p>
+                                    </div>
+                                )}
+
+                                <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">Estado Stock</p>
+                                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${(() => {
+                                        const badge = ESTADOS_STOCK.find(e => e.value === viewingMaquinaria.estadoStock);
+                                        return badge?.color || 'bg-gray-100 text-gray-800';
+                                    })()}`}>
+                                        {ESTADOS_STOCK.find(e => e.value === viewingMaquinaria.estadoStock)?.label || viewingMaquinaria.estadoStock}
+                                    </span>
+                                </div>
+
+                                {viewingMaquinaria.precioReferencia && viewingMaquinaria.precioReferencia > 0 && (
+                                    <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium uppercase tracking-wide">Precio Referencia</p>
+                                        <p className="text-2xl font-bold text-green-600">${viewingMaquinaria.precioReferencia.toLocaleString('es-CL')}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Variants */}
+                            {viewingMaquinaria.variantes && viewingMaquinaria.variantes.length > 0 && (
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <Package size={18} className="text-green-600" />
+                                        Variantes Disponibles
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {viewingMaquinaria.variantes.map((variante, i) => (
+                                            <span key={i} className="px-3 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-sm font-medium border border-green-200 dark:border-green-800">
+                                                {variante}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Tags */}
+                            {viewingMaquinaria.tags && viewingMaquinaria.tags.length > 0 && (
+                                <div className="space-y-2">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                        <Tag size={18} className="text-green-600" />
+                                        Etiquetas
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {viewingMaquinaria.tags.map((tag, i) => (
+                                            <span key={i} className="px-3 py-1 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-full text-sm">
+                                                #{tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* PDF Link */}
+                            {viewingMaquinaria.pdfUrl && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                                    <a
+                                        href={viewingMaquinaria.pdfUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                                    >
+                                        <FileText size={20} />
+                                        Ver ficha técnica PDF
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="sticky bottom-0 bg-white dark:bg-slate-900 px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setViewingMaquinaria(null);
+                                    handleEdit(viewingMaquinaria);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-900 dark:text-white rounded-xl font-medium transition-colors"
+                            >
+                                <Edit2 size={18} />
+                                Editar
+                            </button>
+                            <button
+                                onClick={() => setViewingMaquinaria(null)}
+                                className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Delete Modal */}
             <ConfirmDeleteModal

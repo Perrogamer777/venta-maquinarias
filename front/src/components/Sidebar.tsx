@@ -12,7 +12,6 @@ import {
     Settings,
     Workflow,
     Truck,
-    BookOpen,
     MessageSquarePlus,
     ChevronLeft,
     Sun,
@@ -62,7 +61,6 @@ export default function Sidebar() {
     const managementItems = [
         { href: getHref('/flujo'), icon: Workflow, label: 'Flujo Comercial' },
         { href: getHref('/inventario'), icon: Truck, label: nomenclature.units.plural },
-        { href: getHref('/catalogo'), icon: BookOpen, label: nomenclature.promotions },
     ];
 
     const systemItems = [
@@ -204,8 +202,7 @@ export default function Sidebar() {
                 {/* Collapse Button */}
                 <button
                     onClick={() => setIsCollapsed(!isCollapsed)}
-                    width="full"
-                    className="flex items-center justify-center py-2 text-gray-400 hover:text-white transition-colors"
+                    className="flex items-center justify-center py-2 text-gray-400 hover:text-white transition-colors w-full"
                 >
                     <ChevronLeft size={20} className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} />
                 </button>
