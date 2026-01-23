@@ -1,0 +1,3 @@
+"""
+API module - Dashboard endpoints.
+"""

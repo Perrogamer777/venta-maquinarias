@@ -1,0 +1,100 @@
+================================================================================
+         REQUISITOS DEL CLIENTE PARA IMPLEMENTAR EL SISTEMA
+                    Sistema de Gestión Hotelera con IA
+================================================================================
+
+REQUISITOS OBLIGATORIOS
+--------------------------------------------------------------------------------
+
+1. CUENTA DE WHATSAPP BUSINESS
+   - Número de teléfono exclusivo para el negocio
+   - El número NO puede estar registrado en WhatsApp personal
+   - Puede ser un número nuevo o migrar uno existente
+
+2. CUENTA META BUSINESS (business.facebook.com)
+   - Necesaria para acceder a la API de WhatsApp
+   - Debe estar vinculada al negocio
+
+3. VERIFICACIÓN DE NEGOCIO EN META
+   - Meta exige verificar que el negocio es real
+   - Documentos requeridos:
+     * Documento legal de la empresa (RUT, patente comercial)
+     * Dirección física verificable
+     * Sitio web o presencia online del negocio
+   - Tiempo estimado: 1-5 días hábiles
+
+4. NÚMERO DE TELÉFONO
+   - Exclusivo para el sistema
+   - NO puede estar en WhatsApp personal ni en otra cuenta Business
+
+5. INFORMACIÓN DE CABAÑAS/HABITACIONES
+   - Fotos, descripciones, precios, capacidades
+   - Ver sección "Contenido a Entregar"
+
+6. EMAIL DE CONTACTO
+   - Para recibir notificaciones de reservas
+
+
+================================================================================
+                    CONTENIDO QUE DEBE ENTREGAR EL CLIENTE
+================================================================================
+
+POR CADA CABAÑA/HABITACIÓN:
+--------------------------------------------------------------------------------
+- Nombre de la cabaña
+- Capacidad máxima (número de personas)
+- Descripción detallada
+- 3-5 fotos de buena calidad (URLs públicas o archivos)
+- Precio por noche (precio base)
+- Lista de amenidades incluidas
+- Servicios adicionales disponibles (con precio si aplica)
+
+
+INFORMACIÓN GENERAL DEL NEGOCIO:
+--------------------------------------------------------------------------------
+- Nombre del negocio/lodge/hotel
+- Ubicación (dirección, ciudad, región)
+- Horarios de check-in y check-out
+- Políticas:
+  * Cancelación
+  * Mascotas (permitidas/no permitidas, cobro adicional)
+  * Niños
+  * Depósito/garantía
+- Servicios generales del lugar (piscina, estacionamiento, wifi, etc.)
+- Redes sociales y sitio web (si tiene)
+
+
+================================================================================
+                              NOTAS IMPORTANTES
+================================================================================
+
+SOBRE EL NÚMERO DE WHATSAPP:
+- Si el cliente quiere usar un número existente, perderá el historial de chats
+- Recomendamos usar un número nuevo dedicado al sistema
+
+SOBRE LA VERIFICACIÓN DE META:
+- Sin verificación, la cuenta tiene límites de mensajes
+- La verificación es gratuita pero requiere documentos legales
+
+SOBRE LAS FOTOS:
+- Deben estar alojadas en una URL pública (no Google Drive privado)
+- Formato recomendado: JPG o PNG
+- Tamaño máximo: 5MB por imagen
+- Resolución recomendada: mínimo 800x600 pixels
+
+
+================================================================================
+                              PROCESO DE ONBOARDING
+================================================================================
+
+1. Cliente completa formulario con toda la información
+2. Verificar cuenta Meta Business (si no la tiene)
+3. Configurar número de WhatsApp en la API
+4. Cargar información de cabañas al sistema
+5. Personalizar tono y estilo del agente
+6. Pruebas y ajustes
+7. Lanzamiento
+
+Tiempo estimado de implementación: 1-2 semanas
+
+================================================================================

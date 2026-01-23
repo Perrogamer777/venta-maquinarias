@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+requests
+python-dotenv
+google-cloud-aiplatform
+firebase-admin
+beautifulsoup4
+resend
+httpx
+google-cloud-speech

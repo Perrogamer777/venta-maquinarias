@@ -1,0 +1,500 @@
+@import "tailwindcss";
+
+@variant dark (.dark &);
+
+/* ============================================
+   DESIGN SYSTEM - Dashboard de Gestión de Cabañas
+   Font: DM Sans | Primary: Forest Green | Accent: Amber
+   ============================================ */
+
+:root {
+  /* Fondos principales */
+  --background: 40 33% 98%;
+  --foreground: 24 10% 15%;
+
+  /* Cards */
+  --card: 0 0% 100%;
+  --card-foreground: 24 10% 15%;
+
+  /* Primary - Verde bosque profundo */
+  --primary: 152 45% 25%;
+  --primary-foreground: 40 33% 98%;
+
+  /* Secondary - Arena cálida */
+  --secondary: 35 30% 93%;
+  --secondary-foreground: 24 10% 25%;
+
+  /* Muted - Gris suave */
+  --muted: 30 15% 94%;
+  --muted-foreground: 24 10% 45%;
+
+  /* Accent - Ámbar dorado */
+  --accent: 38 92% 50%;
+  --accent-foreground: 24 10% 10%;
+
+  /* Estados semánticos */
+  --success: 142 71% 45%;
+  --warning: 38 92% 50%;
+  --info: 199 89% 48%;
+  --destructive: 0 72% 51%;
+
+  /* Bordes */
+  --border: 30 20% 90%;
+  --input: 30 20% 88%;
+  --ring: 152 45% 25%;
+  --radius: 0.75rem;
+
+  /* Sidebar - Bosque profundo */
+  --sidebar-background: 152 35% 18%;
+  --sidebar-foreground: 40 20% 90%;
+  --sidebar-accent: 152 30% 24%;
+  --sidebar-border: 152 25% 25%;
+
+  /* Colores estadísticas */
+  --stat-reservations: 199 89% 48%;
+  --stat-pending: 38 92% 50%;
+  --stat-checkin: 142 71% 45%;
+  --stat-checkout: 280 65% 60%;
+  --stat-revenue: 152 45% 35%;
+}
+
+.dark {
+  --background: 24 10% 10%;
+  --foreground: 40 20% 95%;
+
+  --card: 24 10% 14%;
+  --card-foreground: 40 20% 95%;
+
+  --primary: 152 45% 45%;
+  --primary-foreground: 24 10% 10%;
+
+  --secondary: 24 10% 20%;
+  --secondary-foreground: 40 20% 90%;
+
+  --muted: 24 10% 18%;
+  --muted-foreground: 40 10% 60%;
+
+  --border: 24 10% 20%;
+  --input: 24 10% 20%;
+  --ring: 152 45% 45%;
+
+  --sidebar-background: 24 10% 8%;
+  --sidebar-foreground: 40 20% 95%;
+  --sidebar-accent: 24 10% 15%;
+  --sidebar-border: 24 10% 18%;
+}
+
+/* ============================================
+   TYPOGRAPHY - DM Sans
+   ============================================ */
+
+body {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+.h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h2,
+.h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+h3,
+.h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* ============================================
+   GLASS CARD
+   ============================================ */
+
+.glass-card {
+  background: hsl(var(--card) / 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+/* ============================================
+   STAT CARDS
+   ============================================ */
+
+.stat-card {
+  background: hsl(var(--card));
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border) / 0.5);
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  border-color: hsl(var(--border));
+}
+
+.stat-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  color: hsl(var(--sidebar-foreground) / 0.8);
+  transition: all 0.2s ease;
+}
+
+.sidebar-item:hover {
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-foreground));
+}
+
+.sidebar-item-active {
+  background: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-foreground));
+  font-weight: 500;
+}
+
+/* ============================================
+   BADGES
+   ============================================ */
+
+.badge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-pending {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+}
+
+.badge-confirmed {
+  background: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+}
+
+.badge-cancelled {
+  background: hsl(var(--destructive) / 0.15);
+  color: hsl(var(--destructive));
+}
+
+.badge-active {
+  background: hsl(var(--primary) / 0.15);
+  color: hsl(var(--primary));
+}
+
+.badge-info {
+  background: hsl(var(--info) / 0.15);
+  color: hsl(var(--info));
+}
+
+/* ============================================
+   TABLE
+   ============================================ */
+
+.table-row-hover {
+  transition: background-color 0.15s ease;
+}
+
+.table-row-hover:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: hsl(var(--muted));
+}
+
+/* ============================================
+   MESSAGE BUBBLES
+   ============================================ */
+
+.bubble-user {
+  background: hsl(var(--primary));
+  border-radius: 18px 18px 4px 18px;
+  color: hsl(var(--primary-foreground));
+}
+
+.bubble-bot {
+  background: hsl(var(--muted));
+  border-radius: 18px 18px 18px 4px;
+  color: hsl(var(--foreground));
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+/* Staggered animation delays */
+/* Staggered animation delays */
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.1s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.2s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+
+.stagger-6 {
+  animation-delay: 0.3s;
+}
+
+/* Modal Animations */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.animate-scale-out {
+  animation: scaleOut 0.2s ease-in forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-fade-out {
+  animation: fadeOut 0.2s ease-in forwards;
+}
+
+@keyframes fadeInOpacity {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-opacity {
+  animation: fadeInOpacity 0.3s ease-out forwards;
+}
+
+/* ============================================
+   SHADOWS
+   ============================================ */
+
+.shadow-soft {
+  box-shadow: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
+}
+
+.shadow-card {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+}
+
+.shadow-card-hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+}
+
+/* ============================================
+   INPUT FOCUS STATES
+   ============================================ */
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
+  border-color: hsl(var(--ring));
+}
+
+/* ============================================
+   KANBAN COLUMNS
+   ============================================ */
+
+.kanban-column {
+  background: hsl(var(--card) / 0.5);
+  backdrop-filter: blur(8px);
+  border-radius: 1rem;
+}
+
+/* ============================================
+   CHART BARS
+   ============================================ */
+
+.chart-bar {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.chart-bar:hover {
+  background: hsl(var(--primary));
+}
+
+.chart-bar-active {
+  background: hsl(var(--primary));
+}

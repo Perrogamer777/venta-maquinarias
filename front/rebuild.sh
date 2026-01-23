@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Script para rebuild completo con variables de entorno
+set -e
+
+PROJECT_ID="silken-fortress-479315-b0"
+REGION="us-central1"
+SERVICE_NAME="dashboard-cipres"
+
+echo "🔐 Leyendo variables de .env.local..."
+source .env.local
+
+echo "🏗️  Haciendo rebuild completo con variables de entorno..."
+gcloud run deploy $SERVICE_NAME \
+  --source . \
+  --platform managed \
+  --region $REGION \
+  --project $PROJECT_ID \
+  --allow-unauthenticated \
+  --set-build-env-vars "\
+NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY,\
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,\
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID,\
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,\
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,\
+NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID" \
+  --set-env-vars "\
+NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY,\
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=$NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,\
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=$NEXT_PUBLIC_FIREBASE_PROJECT_ID,\
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,\
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,\
+NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID"
+
+echo ""
+echo "✅ Rebuild completado!"
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --project $PROJECT_ID --format 'value(status.url)')
+echo "🌐 URL: $SERVICE_URL"

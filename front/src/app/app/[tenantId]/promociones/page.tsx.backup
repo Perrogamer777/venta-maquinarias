@@ -1,0 +1,1007 @@
+'use client';
+
+import DashboardLayout from '@/components/DashboardLayout';
+import { useState, useEffect, useRef } from 'react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
+import type { Promocion, Conversacion, Reserva } from '@/types';
+import {
+    Plus, Image as ImageIcon, Send, X, Trash2, Users, CheckCircle,
+    AlertCircle, Loader2, Link as LinkIcon, Upload, Eye, Clock, Sparkles,
+    Filter, ChevronDown, ChevronUp, Search, Calendar, DollarSign, Moon, TrendingUp
+} from 'lucide-react';
+
+interface Destinatario {
+    telefono: string;
+    nombre?: string;
+    origen: 'chat' | 'reserva';
+    selected: boolean;
+    // RFM Metrics
+    totalPaid: number;
+    totalNights: number;
+    lastVisit?: string;
+    visitCount: number;
+}
+
+export default function PromocionesPage() {
+    const [loading, setLoading] = useState(true);
+    const [promociones, setPromociones] = useState<Promocion[]>([]);
+    const [showModal, setShowModal] = useState(false);
+    const [showSendModal, setShowSendModal] = useState(false);
+    const [selectedPromo, setSelectedPromo] = useState<Promocion | null>(null);
+    const [destinatarios, setDestinatarios] = useState<Destinatario[]>([]);
+    const [loadingDestinatarios, setLoadingDestinatarios] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [sendResult, setSendResult] = useState<{ success: boolean; sent: number; failed: number } | null>(null);
+
+    // Filters state
+    const [minSpent, setMinSpent] = useState(0);
+    const [recencyMonths, setRecencyMonths] = useState(12);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showFilters, setShowFilters] = useState(false);
+
+    const [promoForm, setPromoForm] = useState({
+        titulo: '',
+        descripcion: '',
+        imagenUrl: '',
+        activa: true
+    });
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState('');
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [imageMode, setImageMode] = useState<'upload' | 'url'>('upload');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // AI Generation state
+    const [showAIModal, setShowAIModal] = useState(false);
+    const [aiPrompt, setAiPrompt] = useState('');
+    const [generatingAI, setGeneratingAI] = useState(false);
+    const [aiError, setAiError] = useState('');
+
+    useEffect(() => {
+        fetchPromociones();
+    }, []);
+
+    const fetchPromociones = async () => {
+        try {
+            const q = query(collection(db, 'promociones'), orderBy('creadaEn', 'desc'));
+            const snapshot = await getDocs(q);
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Promocion));
+            setPromociones(data);
+        } catch (error) {
+            console.error('Error fetching promociones:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchDestinatarios = async () => {
+        setLoadingDestinatarios(true);
+        try {
+            const destinatariosMap = new Map<string, Destinatario>();
+
+            // 1. Fetch all reservations to calculate RFM
+            const reservasSnapshot = await getDocs(collection(db, 'reservas'));
+            const reservasData = reservasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Reserva));
+
+            // Helper to normalize phone numbers (keep only digits and +)
+            const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
+
+            // Group reservations by phone
+            const statsByPhone = new Map<string, { totalPaid: number; totalNights: number; lastVisit: string; visitCount: number }>();
+
+            reservasData.forEach(reserva => {
+                const rawTel = reserva.cliente_telefono;
+                if (!rawTel) return;
+
+                const tel = normalizePhone(rawTel);
+                const current = statsByPhone.get(tel) || { totalPaid: 0, totalNights: 0, lastVisit: '', visitCount: 0 };
+
+                // Update metrics
+                const paid = Number(reserva.precio_total) || 0;
+                const nights = Number(reserva.noches) || 0;
+
+                current.totalPaid += paid;
+                current.totalNights += nights;
+                current.visitCount += 1;
+
+                // Handle fecha_inicio which might be string or Timestamp
+                let fechaStr = '';
+                if (reserva.fecha_inicio) {
+                    if (typeof reserva.fecha_inicio === 'string') {
+                        fechaStr = reserva.fecha_inicio;
+                    } else if ((reserva.fecha_inicio as any).toDate) {
+                        try {
+                            fechaStr = (reserva.fecha_inicio as any).toDate().toISOString();
+                        } catch (e) {
+                            console.error('Error converting date:', e);
+                        }
+                    }
+                }
+
+                if (fechaStr && (!current.lastVisit || fechaStr > current.lastVisit)) {
+                    current.lastVisit = fechaStr;
+                }
+
+                statsByPhone.set(tel, current);
+            });
+
+            // 2. Fetch from chats
+            const chatsSnapshot = await getDocs(collection(db, 'chats'));
+            chatsSnapshot.docs.forEach(doc => {
+                const rawTelefono = doc.id;
+                if (!rawTelefono) return;
+
+                const normalizedTel = normalizePhone(rawTelefono);
+                if (!destinatariosMap.has(rawTelefono)) {
+                    const stats = statsByPhone.get(normalizedTel) || { totalPaid: 0, totalNights: 0, visitCount: 0, lastVisit: '' };
+                    destinatariosMap.set(rawTelefono, {
+                        telefono: rawTelefono,
+                        nombre: doc.data().clientName || undefined,
+                        origen: 'chat',
+                        selected: false,
+                        totalPaid: stats.totalPaid,
+                        totalNights: stats.totalNights,
+                        visitCount: stats.visitCount,
+                        lastVisit: stats.lastVisit || undefined
+                    });
+                }
+            });
+
+            // 3. Ensure all people from reservations are included
+            reservasData.forEach(reserva => {
+                const rawTelefono = reserva.cliente_telefono;
+                if (!rawTelefono) return;
+
+                const normalizedTel = normalizePhone(rawTelefono);
+                if (!destinatariosMap.has(rawTelefono)) {
+                    const stats = statsByPhone.get(normalizedTel)!;
+                    destinatariosMap.set(rawTelefono, {
+                        telefono: rawTelefono,
+                        nombre: reserva.cliente_nombre || undefined,
+                        origen: 'reserva',
+                        selected: false,
+                        totalPaid: stats.totalPaid,
+                        totalNights: stats.totalNights,
+                        visitCount: stats.visitCount,
+                        lastVisit: stats.lastVisit || undefined
+                    });
+                }
+            });
+
+            setDestinatarios(Array.from(destinatariosMap.values()));
+        } catch (error) {
+            console.error('Error fetching destinatarios:', error);
+        } finally {
+            setLoadingDestinatarios(false);
+        }
+    };
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onload = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const uploadImage = async (): Promise<string> => {
+        if (!imageFile) return promoForm.imagenUrl;
+
+        setUploadingImage(true);
+        try {
+            const filename = `promociones/${Date.now()}_${imageFile.name}`;
+            const storageRef = ref(storage, filename);
+            await uploadBytes(storageRef, imageFile);
+            const url = await getDownloadURL(storageRef);
+            return url;
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    const handleSavePromo = async () => {
+        if (!promoForm.titulo || !promoForm.descripcion) {
+            alert('Por favor completa título y descripción');
+            return;
+        }
+
+        try {
+            let imagenUrl = promoForm.imagenUrl;
+
+            if (imageMode === 'upload' && imageFile) {
+                imagenUrl = await uploadImage();
+            }
+
+            if (!imagenUrl) {
+                alert('Por favor agrega una imagen');
+                return;
+            }
+
+            const promoData = {
+                titulo: promoForm.titulo,
+                descripcion: promoForm.descripcion,
+                imagenUrl,
+                activa: promoForm.activa,
+                creadaEn: selectedPromo?.creadaEn || new Date().toISOString()
+            };
+
+            if (selectedPromo?.id) {
+                await updateDoc(doc(db, 'promociones', selectedPromo.id), promoData);
+            } else {
+                await addDoc(collection(db, 'promociones'), promoData);
+            }
+
+            setShowModal(false);
+            resetForm();
+            fetchPromociones();
+        } catch (error) {
+            console.error('Error saving promocion:', error);
+            alert('Error al guardar la promoción');
+        }
+    };
+
+    const handleDeletePromo = async (promo: Promocion) => {
+        if (!confirm('¿Estás seguro de eliminar esta promoción?')) return;
+
+        try {
+            if (promo.id) await deleteDoc(doc(db, 'promociones', promo.id));
+            fetchPromociones();
+        } catch (error) {
+            console.error('Error deleting promocion:', error);
+        }
+    };
+
+    const openSendModal = (promo: Promocion) => {
+        setSelectedPromo(promo);
+        setShowSendModal(true);
+        setSendResult(null);
+        fetchDestinatarios();
+    };
+
+    const toggleDestinatario = (telefono: string) => {
+        setDestinatarios(prev => prev.map(d =>
+            d.telefono === telefono ? { ...d, selected: !d.selected } : d
+        ));
+    };
+
+    const filteredDestinatarios = destinatarios.filter(dest => {
+        // Search query filter
+        const lowerQuery = searchQuery.toLowerCase();
+        const matchesSearch = !searchQuery ||
+            dest.telefono.includes(searchQuery) ||
+            (dest.nombre && dest.nombre.toLowerCase().includes(lowerQuery));
+
+        if (!matchesSearch) return false;
+
+        // Spent filter
+        if (dest.totalPaid < minSpent) return false;
+
+        // Recency filter
+        if (recencyMonths < 120) {
+            if (!dest.lastVisit) return false;
+            const lastVisitDate = new Date(dest.lastVisit);
+            const cutoffDate = new Date();
+            cutoffDate.setMonth(cutoffDate.getMonth() - recencyMonths);
+            if (lastVisitDate < cutoffDate) return false;
+        }
+
+        return true;
+    });
+
+    const selectAll = () => {
+        const filteredIds = new Set(filteredDestinatarios.map(d => d.telefono));
+        setDestinatarios(prev => prev.map(d =>
+            filteredIds.has(d.telefono) ? { ...d, selected: true } : d
+        ));
+    };
+
+    const selectNone = () => {
+        const filteredIds = new Set(filteredDestinatarios.map(d => d.telefono));
+        setDestinatarios(prev => prev.map(d =>
+            filteredIds.has(d.telefono) ? { ...d, selected: false } : d
+        ));
+    };
+
+    const handleSendPromotion = async () => {
+        const selected = destinatarios.filter(d => d.selected);
+        if (selected.length === 0) {
+            alert('Selecciona al menos un destinatario');
+            return;
+        }
+
+        if (!selectedPromo) return;
+
+        setSending(true);
+        try {
+            const response = await fetch('/api/send-promotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phones: selected.map(d => d.telefono),
+                    imageUrl: selectedPromo.imagenUrl,
+                    title: selectedPromo.titulo,
+                    description: selectedPromo.descripcion,
+                    promotionId: selectedPromo.id
+                })
+            });
+
+            const result = await response.json();
+            setSendResult({
+                success: result.success,
+                sent: result.summary?.sent || 0,
+                failed: result.summary?.failed || 0
+            });
+
+            fetchPromociones(); // Refresh to get updated historial
+        } catch (error) {
+            console.error('Error sending promotion:', error);
+            setSendResult({ success: false, sent: 0, failed: selected.length });
+        } finally {
+            setSending(false);
+        }
+    };
+
+    const resetForm = () => {
+        setPromoForm({ titulo: '', descripcion: '', imagenUrl: '', activa: true });
+        setImageFile(null);
+        setImagePreview('');
+        setSelectedPromo(null);
+        setImageMode('upload');
+    };
+
+    const openEditModal = (promo: Promocion) => {
+        setSelectedPromo(promo);
+        setPromoForm({
+            titulo: promo.titulo,
+            descripcion: promo.descripcion,
+            imagenUrl: promo.imagenUrl,
+            activa: promo.activa
+        });
+        setImagePreview(promo.imagenUrl);
+        setImageMode('url');
+        setShowModal(true);
+    };
+
+    const formatPhoneNumber = (phone: string) => {
+        const cleaned = phone.replace(/\D/g, '');
+        if (cleaned.length === 11 && cleaned.startsWith('56')) {
+            return `+${cleaned.slice(0, 2)}${cleaned.slice(2, 3)} ${cleaned.slice(3, 7)} ${cleaned.slice(7)}`;
+        }
+        return phone;
+    };
+
+    // Generate promotion with AI
+    const generateWithAI = async () => {
+        if (!aiPrompt.trim()) return;
+
+        setGeneratingAI(true);
+        setAiError('');
+
+        try {
+            const response = await fetch('/api/generate-promotion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: aiPrompt })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.promotion) {
+                // Populate form with AI generated content
+                setPromoForm({
+                    titulo: data.promotion.titulo,
+                    descripcion: data.promotion.descripcion,
+                    imagenUrl: data.promotion.imagenUrl || '',
+                    activa: true
+                });
+                if (data.promotion.imagenUrl) {
+                    setImagePreview(data.promotion.imagenUrl);
+                    setImageMode('url');
+                }
+                setShowAIModal(false);
+                setShowModal(true);
+                setAiPrompt('');
+            } else {
+                setAiError(data.error || 'Error al generar promoción');
+            }
+        } catch (error) {
+            console.error('Error generating promotion:', error);
+            setAiError('Error de conexión. Inténtalo de nuevo.');
+        } finally {
+            setGeneratingAI(false);
+        }
+    };
+
+    const selectedCount = destinatarios.filter(d => d.selected).length;
+
+    return (
+        <DashboardLayout>
+            <div className="animate-fade-in">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Promociones</h1>
+                        <p className="text-gray-600 dark:text-gray-400 text-sm mt-0.5">Crea y envía campañas a tus clientes</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => { resetForm(); setShowModal(true); }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium shadow-lg shadow-emerald-500/20"
+                        >
+                            <Plus size={20} />
+                            Nueva Promoción
+                        </button>
+                    </div>
+                </div>
+
+                {/* Promociones Grid */}
+                {loading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="h-72 bg-gray-200 dark:bg-gray-800 rounded-2xl animate-pulse" />
+                        ))}
+                    </div>
+                ) : promociones.length === 0 ? (
+                    <div className="text-center py-16">
+                        <ImageIcon size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Sin promociones</h3>
+                        <p className="text-gray-500 mt-1">Crea tu primera promoción para comenzar</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {promociones.map(promo => (
+                            <div key={promo.id} className="glass rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 group">
+                                {/* Image */}
+                                <div className="relative h-40 bg-gray-100 dark:bg-gray-800">
+                                    {promo.imagenUrl ? (
+                                        <img
+                                            src={promo.imagenUrl}
+                                            alt={promo.titulo}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center">
+                                            <ImageIcon size={40} className="text-gray-400" />
+                                        </div>
+                                    )}
+                                    <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => openEditModal(promo)}
+                                            className="p-2 bg-white/90 dark:bg-gray-900/90 rounded-lg hover:bg-white dark:hover:bg-gray-800 transition-colors"
+                                        >
+                                            <Eye size={16} className="text-gray-600 dark:text-gray-400" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeletePromo(promo)}
+                                            className="p-2 bg-white/90 dark:bg-gray-900/90 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <Trash2 size={16} className="text-red-500" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Content */}
+                                <div className="p-4">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{promo.titulo}</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">{promo.descripcion}</p>
+
+                                    {/* Stats */}
+                                    {promo.historialEnvios && promo.historialEnvios.length > 0 && (
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+                                            <Clock size={12} />
+                                            <span>
+                                                {promo.historialEnvios.reduce((sum, e) => sum + e.enviados, 0)} enviados
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Actions */}
+                                    <button
+                                        onClick={() => openSendModal(promo)}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors font-medium text-sm"
+                                    >
+                                        <Send size={16} />
+                                        Enviar a Clientes
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Create/Edit Modal - Enhanced Design */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+                    <div
+                        className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-800"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm z-10">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                    {selectedPromo ? 'Editar Promoción' : 'Nueva Promoción'}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    {selectedPromo ? 'Modifica los detalles de tu campaña' : 'Crea una nueva campaña para tus clientes'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full text-gray-500 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+
+                            {/* AI Trigger */}
+                            <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/20 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                        <Sparkles size={18} className="text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900 dark:text-white text-sm">Usa IA para crear tu promoción</h4>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { setShowAIModal(true); setShowModal(false); }}
+                                    className="px-4 py-2 bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-300 border border-purple-100 dark:border-purple-800 rounded-xl text-sm font-medium hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+                                >
+                                    Generar con IA
+                                </button>
+                            </div>
+
+                            {/* Image Upload Area */}
+                            <div>
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Imagen de portada</label>
+
+                                    {/* Mode Toggle */}
+                                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                                        <button
+                                            onClick={() => setImageMode('upload')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${imageMode === 'upload'
+                                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                                }`}
+                                        >
+                                            <Upload size={14} />
+                                            Subir
+                                        </button>
+                                        <button
+                                            onClick={() => setImageMode('url')}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${imageMode === 'url'
+                                                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                                                : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                                                }`}
+                                        >
+                                            <LinkIcon size={14} />
+                                            URL
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {imageMode === 'upload' ? (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="relative group border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 rounded-2xl p-0 transition-all cursor-pointer overflow-hidden bg-gray-50 dark:bg-gray-800/50 min-h-[200px] flex flex-col items-center justify-center"
+                                    >
+                                        {imagePreview ? (
+                                            <>
+                                                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover absolute inset-0" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <div className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                                                        <ImageIcon size={18} />
+                                                        <span className="text-sm font-medium">Cambiar imagen</span>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center p-8">
+                                                <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                                                    <Upload size={28} />
+                                                </div>
+                                                <h4 className="font-medium text-gray-900 dark:text-white mb-1">Haz click para subir</h4>
+                                                <p className="text-sm text-gray-500">JPG, PNG o GIF (max. 5MB)</p>
+                                            </div>
+                                        )}
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageFileChange}
+                                            className="hidden"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        <input
+                                            type="url"
+                                            value={promoForm.imagenUrl}
+                                            onChange={(e) => {
+                                                setPromoForm({ ...promoForm, imagenUrl: e.target.value });
+                                                setImagePreview(e.target.value);
+                                            }}
+                                            placeholder="https://ejemplo.com/imagen.jpg"
+                                            className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white transition-all"
+                                        />
+                                        {imagePreview && (
+                                            <div className="relative rounded-xl overflow-hidden h-48 border border-gray-200 dark:border-gray-700">
+                                                <img src={imagePreview} alt="Preview" className="w-full h-full object-cover"
+                                                    onError={() => setImagePreview('')}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Title */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Título de la promoción</label>
+                                <input
+                                    type="text"
+                                    value={promoForm.titulo}
+                                    onChange={(e) => setPromoForm({ ...promoForm, titulo: e.target.value })}
+                                    placeholder="Ej: 🎉 ¡Escapada Romántica con 20% OFF!"
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white font-medium transition-all"
+                                />
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Descripción del mensaje</label>
+                                <textarea
+                                    value={promoForm.descripcion}
+                                    onChange={(e) => setPromoForm({ ...promoForm, descripcion: e.target.value })}
+                                    rows={5}
+                                    placeholder="Escribe el cuerpo del mensaje que recibirán tus clientes..."
+                                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white resize-none transition-all"
+                                />
+                                <p className="text-xs text-right text-gray-400 mt-1">
+                                    {promoForm.descripcion.length} caracteres
+                                </p>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium text-sm"
+                                    disabled={uploadingImage}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSavePromo}
+                                    disabled={uploadingImage || !promoForm.titulo || !promoForm.descripcion}
+                                    className="flex-1 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-xl transition-all font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:shadow-none"
+                                >
+                                    {uploadingImage ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            <span>Subiendo...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={18} />
+                                            <span>{selectedPromo ? 'Actualizar' : 'Guardar Promoción'}</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Send Modal - Fixed positioning */}
+            {showSendModal && selectedPromo && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setShowSendModal(false)}>
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center flex-shrink-0">
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Enviar Promoción</h3>
+                                <p className="text-sm text-gray-500">{selectedPromo.titulo}</p>
+                            </div>
+                            <button onClick={() => setShowSendModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {sendResult ? (
+                            <div className="p-6 text-center">
+                                {sendResult.success ? (
+                                    <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
+                                ) : (
+                                    <AlertCircle size={48} className="mx-auto text-amber-500 mb-4" />
+                                )}
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                                    {sendResult.success ? '¡Enviado!' : 'Envío completado con errores'}
+                                </h4>
+                                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                    {sendResult.sent} enviados, {sendResult.failed} fallidos
+                                </p>
+                                <button
+                                    onClick={() => setShowSendModal(false)}
+                                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Selection & Filters Header */}
+                                <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-4 flex-shrink-0 bg-gray-50/50 dark:bg-gray-800/30">
+                                    <div className="flex items-center justify-between">
+                                        <div className="relative flex-1 max-w-[240px]">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar cliente..."
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                className="w-full pl-9 pr-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setShowFilters(!showFilters)}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${showFilters ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                        >
+                                            <Filter size={16} />
+                                            Filtros
+                                            {showFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                        </button>
+                                    </div>
+
+                                    {showFilters && (
+                                        <div className="grid grid-cols-1 gap-4 p-4 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <DollarSign size={12} /> Gasto Mínimo: ${minSpent.toLocaleString()}
+                                                </label>
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="1000000"
+                                                    step="50000"
+                                                    value={minSpent}
+                                                    onChange={(e) => setMinSpent(parseInt(e.target.value))}
+                                                    className="w-full accent-indigo-600"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Calendar size={12} /> Recencia (Última visita): {recencyMonths === 120 ? 'Siempre' : `Últimos ${recencyMonths} meses`}
+                                                </label>
+                                                <select
+                                                    value={recencyMonths}
+                                                    onChange={(e) => setRecencyMonths(parseInt(e.target.value))}
+                                                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm outline-none"
+                                                >
+                                                    <option value={3}>Últimos 3 meses</option>
+                                                    <option value={6}>Últimos 6 meses</option>
+                                                    <option value={12}>Último año</option>
+                                                    <option value={24}>últimos 2 años</option>
+                                                    <option value={120}>Todos los tiempos</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-between pb-1">
+                                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                            {selectedCount} de {filteredDestinatarios.length} filtrados
+                                        </span>
+                                        <div className="flex gap-3">
+                                            <button onClick={selectAll} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-tight">Seleccionar Todos</button>
+                                            <button onClick={selectNone} className="text-xs font-bold text-gray-400 hover:text-gray-500 uppercase tracking-tight">Deseleccionar</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Destinatarios List */}
+                                <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50/50 dark:bg-gray-900/50">
+                                    {loadingDestinatarios ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <Loader2 size={32} className="animate-spin text-gray-300" />
+                                        </div>
+                                    ) : filteredDestinatarios.length === 0 ? (
+                                        <div className="text-center py-12 px-6">
+                                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                                <Search size={24} className="text-gray-400" />
+                                            </div>
+                                            <p className="text-gray-500 font-medium">No hay clientes que coincidan</p>
+                                            <p className="text-xs text-gray-400 mt-1">Prueba ajustando los filtros de búsqueda</p>
+                                        </div>
+                                    ) : (
+                                        filteredDestinatarios.map(dest => (
+                                            <label
+                                                key={dest.telefono}
+                                                className={`flex items-start gap-4 p-4 rounded-2xl cursor-pointer transition-all border ${dest.selected
+                                                    ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800 shadow-sm'
+                                                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600'
+                                                    }`}
+                                            >
+                                                <div className="pt-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={dest.selected}
+                                                        onChange={() => toggleDestinatario(dest.telefono)}
+                                                        className="w-5 h-5 text-indigo-600 rounded-lg border-gray-300 focus:ring-indigo-500 transition-all"
+                                                    />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between mb-1">
+                                                        <p className="font-bold text-gray-900 dark:text-white text-sm truncate">
+                                                            {dest.nombre || formatPhoneNumber(dest.telefono)}
+                                                        </p>
+                                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${dest.origen === 'reserva'
+                                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                                            }`}>
+                                                            {dest.origen === 'reserva' ? 'Reserva' : 'Chat'}
+                                                        </span>
+                                                    </div>
+
+                                                    {dest.nombre && (
+                                                        <p className="text-xs text-gray-500 mb-2">{formatPhoneNumber(dest.telefono)}</p>
+                                                    )}
+
+                                                    {/* Metrics Row */}
+                                                    <div className="flex flex-wrap gap-3 mt-2">
+                                                        <div className="flex items-center gap-1 text-[10px] font-medium text-gray-500 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded-lg">
+                                                            <TrendingUp size={10} />
+                                                            {dest.visitCount} visitas
+                                                        </div>
+                                                        <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/40 px-2 py-1 rounded-lg">
+                                                            <DollarSign size={10} />
+                                                            ${dest.totalPaid.toLocaleString()}
+                                                        </div>
+                                                        {dest.lastVisit && (
+                                                            <div className="flex items-center gap-1 text-[10px] font-medium text-gray-400 px-1 py-1">
+                                                                <Clock size={10} />
+                                                                u.v. {new Date(dest.lastVisit).toLocaleDateString()}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Send Button */}
+                                <div className="p-4 border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
+                                    <button
+                                        onClick={handleSendPromotion}
+                                        disabled={sending || selectedCount === 0}
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50"
+                                    >
+                                        {sending ? (
+                                            <>
+                                                <Loader2 size={18} className="animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send size={18} />
+                                                Enviar a {selectedCount} contacto{selectedCount !== 1 ? 's' : ''}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* AI Generation Modal */}
+            {/* AI Generation Modal - Enhanced Design */}
+            {showAIModal && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => setShowAIModal(false)}>
+                    <div
+                        className="bg-white dark:bg-gray-900 rounded-3xl w-full max-w-lg shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden transform transition-all"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header with Gradient */}
+                        <div className="relative p-6 pb-8 bg-gradient-to-br from-purple-600 to-indigo-600">
+                            <button
+                                onClick={() => setShowAIModal(false)}
+                                className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="flex flex-col items-center text-center pt-2">
+                                <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4 shadow-lg border border-white/20">
+                                    <Sparkles size={28} className="text-white" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-white mb-1">Generar con IA</h2>
+                                <p className="text-purple-100 text-sm max-w-xs mx-auto">
+                                    Describe tu idea y la IA creará el contenido y la imagen perfecta para tu promoción.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 -mt-4 bg-white dark:bg-gray-900 rounded-t-3xl relative">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2 ml-1">
+                                        ¿Qué quieres promocionar?
+                                    </label>
+                                    <div className="relative">
+                                        <textarea
+                                            value={aiPrompt}
+                                            onChange={(e) => setAiPrompt(e.target.value)}
+                                            placeholder="Ej: Descuento de 20% para parejas este fin de semana en la cabaña con tinaja. Incluye una botella de vino de regalo..."
+                                            className="w-full px-5 py-4 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all resize-none text-base"
+                                            rows={5}
+                                            autoFocus
+                                        />
+                                        <div className="absolute bottom-3 right-3 text-xs text-gray-400 font-medium">
+                                            {aiPrompt.length} caracteres
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/20">
+                                    <div className="flex-shrink-0 mt-0.5 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                                        <span className="text-xs font-bold text-purple-600 dark:text-purple-400">i</span>
+                                    </div>
+                                    <p className="text-sm text-purple-800 dark:text-purple-200 leading-relaxed">
+                                        La IA generará un <strong>título atractivo</strong>, una <strong>descripción persuasiva</strong> y seleccionará o creará una <strong>imagen</strong> acorde a tu pedido.
+                                    </p>
+                                </div>
+
+                                {aiError && (
+                                    <div className="animate-fade-in flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-300 rounded-2xl border border-red-100 dark:border-red-900/20">
+                                        <AlertCircle size={20} className="flex-shrink-0" />
+                                        <span className="text-sm font-medium">{aiError}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-end gap-3 mt-8">
+                                <button
+                                    onClick={() => setShowAIModal(false)}
+                                    className="px-5 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors font-medium text-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={generateWithAI}
+                                    disabled={generatingAI || !aiPrompt.trim()}
+                                    className="relative overflow-hidden flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-purple-400 disabled:to-indigo-400 text-white rounded-xl transition-all font-medium shadow-lg shadow-purple-500/25 disabled:shadow-none group"
+                                >
+                                    {generatingAI ? (
+                                        <>
+                                            <Loader2 size={18} className="animate-spin" />
+                                            <span>Creando magia...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles size={18} className="group-hover:animate-pulse" />
+                                            <span>Generar Promoción</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </DashboardLayout>
+    );
+}
+
