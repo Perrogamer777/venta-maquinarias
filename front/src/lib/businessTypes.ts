@@ -31,19 +31,6 @@ export const BUSINESS_TYPES: BusinessTypePreset[] = [
         }
     },
     {
-        id: 'cabins',
-        name: 'Cabañas',
-        icon: Building,
-        nomenclature: {
-            units: { plural: 'Cabañas', singular: 'Cabaña' },
-            reservations: { plural: 'Reservas', singular: 'Reserva' },
-            clients: { plural: 'Huéspedes', singular: 'Huésped' },
-            calendar: 'Calendario',
-            promotions: 'Promociones',
-            statistics: 'Estadísticas'
-        }
-    },
-    {
         id: 'hotel',
         name: 'Hotel',
         icon: Hotel,
