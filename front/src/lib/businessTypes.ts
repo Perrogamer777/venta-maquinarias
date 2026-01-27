@@ -107,8 +107,8 @@ export const ESTADOS_STOCK = [
 
 // Estados de cotización
 export const ESTADOS_COTIZACION = [
-    { value: 'NUEVA', label: 'Nueva', color: 'bg-blue-100 text-blue-800', icon: PlusCircle },
-    { value: 'CONTACTADO', label: 'Contactado', color: 'bg-yellow-100 text-yellow-800', icon: MessageCircle },
+    { value: 'NUEVA', label: 'Interesado', color: 'bg-blue-100 text-blue-800', icon: PlusCircle },
+    { value: 'CONTACTADO', label: 'Cotizado', color: 'bg-yellow-100 text-yellow-800', icon: MessageCircle },
     { value: 'NEGOCIANDO', label: 'Negociando', color: 'bg-orange-100 text-orange-800', icon: Briefcase },
     { value: 'VENDIDA', label: 'Vendida', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     { value: 'PERDIDA', label: 'Perdida', color: 'bg-gray-100 text-gray-800', icon: XCircle }

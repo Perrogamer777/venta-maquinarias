@@ -1,10 +1,6 @@
-fastapi
-uvicorn
-requests
-python-dotenv
-google-cloud-aiplatform
-firebase-admin
-beautifulsoup4
-resend
-httpx
-google-cloud-speech
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+google-cloud-aiplatform==1.75.0
+firebase-admin==6.6.0
+requests==2.32.3
+python-dotenv==1.0.1
