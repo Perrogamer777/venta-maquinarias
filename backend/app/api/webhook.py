@@ -5,7 +5,7 @@ import logging
 from fastapi import APIRouter, Request, HTTPException
 
 from app.services.firebase import save_message, get_chat_history
-from app.services.whatsapp import send_message
+from app.services.whatsapp import send_message, send_image, send_document
 from app.services.agent import process_message
 from app.core.config import settings
 
@@ -55,6 +55,8 @@ async def receive_webhook(request: Request):
         if not text:
             return {"status": "ok"}
         
+        logger.info(f"📱 Mensaje de {phone}: {text[:50]}...")
+        
         # Intentar guardar mensaje usuario (no bloqueante)
         try:
             save_message(phone, "user", text)
@@ -68,15 +70,48 @@ async def receive_webhook(request: Request):
         except Exception as e:
             logger.error(f"Error obteniendo historial: {e}")
         
-        # Procesar con el agente
-        response_text = process_message(text, history)
+        # Procesar con el agente (ahora retorna dict con text, images, documents)
+        response = process_message(text, history)
         
-        # Enviar respuesta PRIMERO (prioridad crítica)
-        sent = send_message(phone, response_text)
-        if sent:
-            logger.info("✅ Respuesta enviada exitosamente")
+        # El agente puede retornar string (legacy) o dict (nuevo)
+        if isinstance(response, str):
+            response_text = response
+            images = []
+            documents = []
         else:
-            logger.error("❌ Falló el envío de respuesta a WhatsApp")
+            response_text = response.get("text", "")
+            images = response.get("images", [])
+            documents = response.get("documents", [])
+        
+        # Enviar respuesta de texto primero
+        if response_text:
+            sent = send_message(phone, response_text)
+            if sent:
+                logger.info("✅ Respuesta de texto enviada")
+            else:
+                logger.error("❌ Falló el envío de texto a WhatsApp")
+        
+        # Enviar imágenes (si hay)
+        for img_url in images:
+            try:
+                logger.info(f"📤 Intentando enviar imagen: {img_url}")
+                send_image(phone, img_url, caption="📷 Imagen del producto")
+                logger.info(f"🖼️ Imagen enviada correctamente")
+            except Exception as e:
+                logger.error(f"Error enviando imagen: {e}")
+        
+        # Enviar documentos (si hay)
+        for doc in documents:
+            try:
+                send_document(
+                    phone, 
+                    doc.get("url"), 
+                    doc.get("filename", "Cotizacion.pdf"),
+                    caption="📄 Tu cotización formal de MACI"
+                )
+                logger.info(f"📄 Documento enviado: {doc.get('filename')}")
+            except Exception as e:
+                logger.error(f"Error enviando documento: {e}")
         
         # Intentar guardar respuesta asistente (no bloqueante)
         try:
@@ -89,3 +124,4 @@ async def receive_webhook(request: Request):
     except Exception as e:
         logger.error(f"❌ Error procesando webhook: {e}", exc_info=True)
         return {"status": "error", "message": str(e)}
+

@@ -35,7 +35,7 @@ def save_message(phone: str, role: str, content: str) -> None:
         logger.error(f"Error guardando mensaje: {e}")
 
 
-def get_chat_history(phone: str, limit: int = 10) -> list:
+def get_chat_history(phone: str, limit: int = 50) -> list:
     """Obtiene el historial del chat"""
     try:
         messages = []
