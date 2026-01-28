@@ -1,6 +1,6 @@
 // Mensaje individual en una conversación
 export interface Mensaje {
-    role: 'user' | 'model';
+    role: 'user' | 'model' | 'assistant'; // 'model' legacy, 'assistant' from backend
     parts: { text: string }[];
     timestamp: string;
     type?: 'text' | 'image';

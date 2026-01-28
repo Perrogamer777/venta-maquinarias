@@ -46,6 +46,7 @@ export default function InventarioPage() {
     });
 
     const [newImageUrl, setNewImageUrl] = useState('');
+    const [uploading, setUploading] = useState(false);
     const [newVariante, setNewVariante] = useState('');
     const [newTag, setNewTag] = useState('');
 
@@ -424,15 +425,63 @@ export default function InventarioPage() {
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                         <ImageIcon size={14} className="inline mr-1" />
-                                        Imágenes (URLs)
+                                        Imágenes
                                     </label>
+
+                                    {/* Upload desde archivo */}
+                                    <div className="flex gap-2 mb-2">
+                                        <label className="flex-1 cursor-pointer">
+                                            <div className="px-4 py-2 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-800/50 text-gray-600 dark:text-gray-400 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors text-center">
+                                                {uploading ? '⏳ Subiendo...' : '📁 Seleccionar archivo local'}
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="hidden"
+                                                disabled={uploading}
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+
+                                                    setUploading(true);
+                                                    try {
+                                                        const formData = new FormData();
+                                                        formData.append('file', file);
+
+                                                        const res = await fetch('/api/upload-image', {
+                                                            method: 'POST',
+                                                            body: formData
+                                                        });
+
+                                                        const data = await res.json();
+                                                        if (data.success) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                imagenes: [...(prev.imagenes || []), data.url]
+                                                            }));
+                                                            toast.success('✅ Imagen subida');
+                                                        } else {
+                                                            toast.error(data.error || 'Error al subir');
+                                                        }
+                                                    } catch (err) {
+                                                        toast.error('Error al subir imagen');
+                                                    } finally {
+                                                        setUploading(false);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {/* O desde URL */}
                                     <div className="flex gap-2 mb-2">
                                         <input
                                             type="text"
                                             value={newImageUrl}
                                             onChange={(e) => setNewImageUrl(e.target.value)}
-                                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
-                                            placeholder="https://..."
+                                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-gray-900 dark:text-white text-sm"
+                                            placeholder="O pega una URL: https://..."
                                             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
                                         />
                                         <button onClick={addImage} className="px-4 py-2 bg-gray-100 dark:bg-slate-700 rounded-xl hover:bg-gray-200 dark:hover:bg-slate-600">

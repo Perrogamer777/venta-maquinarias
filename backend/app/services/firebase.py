@@ -25,11 +25,25 @@ db = firestore.client()
 def save_message(phone: str, role: str, content: str) -> None:
     """Guarda un mensaje en Firestore"""
     try:
-        db.collection("chats").document(phone).collection("messages").add({
+        now = datetime.now()
+        
+        # IMPORTANTE: Crear/actualizar el documento del chat PRIMERO
+        # Sin esto, el documento padre no existe y no aparece en consultas
+        chat_ref = db.collection("chats").document(phone)
+        chat_ref.set({
+            "last_interaction": now,
+            "phone": phone,
+            "agentePausado": False,
+            "unread": role == "user"  # Marcar como no leído si es mensaje del usuario
+        }, merge=True)
+        
+        # Ahora guardar el mensaje en la subcolección
+        chat_ref.collection("messages").add({
             "role": role,
-            "content": content,
-            "timestamp": datetime.now()
+            "parts": [{"text": content}],
+            "timestamp": now.isoformat()
         })
+        
         logger.info(f"💾 Mensaje guardado: {phone} - {role}")
     except Exception as e:
         logger.error(f"Error guardando mensaje: {e}")

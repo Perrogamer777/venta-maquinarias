@@ -27,7 +27,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 export default function Sidebar() {
     const pathname = usePathname();
     const { logout, user } = useAuth();
-    const { companyName: globalName, companySubtitle: globalSubtitle, nomenclature: globalNomenclature } = useConfig();
+    const { settings, nomenclature: globalNomenclature } = useConfig();
     const { theme, toggleTheme } = useTheme();
     const { isCollapsed, setIsCollapsed } = useSidebar();
 
@@ -35,8 +35,7 @@ export default function Sidebar() {
     const tenantContext = useContext(TenantContext);
     const tenantConfig = tenantContext?.tenantConfig;
 
-    const companyName = tenantConfig?.companyName || globalName;
-    const companySubtitle = tenantConfig?.companySubtitle || globalSubtitle;
+    const companyName = tenantConfig?.companyName || settings.companyName;
     const nomenclature = tenantConfig?.nomenclature || globalNomenclature;
 
     const params = useParams();

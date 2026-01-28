@@ -91,7 +91,7 @@ def execute_func(name: str, args: dict) -> dict:
     logger.info(f"🔧 {name} → {args}")
     
     if name == "buscar_maquinaria":
-        resultados = search_maquinarias(args.get("consulta", ""), limit=6)
+        resultados = search_maquinarias(args.get("consulta", ""), limit=10)
         if resultados:
             return {"success": True, "productos": [
                 {

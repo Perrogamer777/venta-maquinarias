@@ -62,13 +62,6 @@ export default function HomePage() {
   const [weekTotals, setWeekTotals] = useState({ thisWeek: 0, lastWeek: 0 });
   const [loading, setLoading] = useState(true);
 
-  // Redirect admin users to /admin
-  useEffect(() => {
-    if (isAdmin) {
-      router.push('/admin');
-    }
-  }, [isAdmin, router]);
-
   // Parse various date formats
   const parseDate = (dateVal: unknown): Date | null => {
     if (!dateVal) return null;

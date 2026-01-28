@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, HTTPException
 from app.services.firebase import save_message, get_chat_history
 from app.services.whatsapp import send_message, send_image, send_document
 from app.services.agent import process_message
+from app.services.image_converter import convert_image_list
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -91,14 +92,19 @@ async def receive_webhook(request: Request):
             else:
                 logger.error("❌ Falló el envío de texto a WhatsApp")
         
-        # Enviar imágenes (si hay)
-        for img_url in images:
-            try:
-                logger.info(f"📤 Intentando enviar imagen: {img_url}")
-                send_image(phone, img_url, caption="📷 Imagen del producto")
-                logger.info(f"🖼️ Imagen enviada correctamente")
-            except Exception as e:
-                logger.error(f"Error enviando imagen: {e}")
+        
+        # Enviar imágenes (si hay) - CONVERTIR A JPG PRIMERO
+        if images:
+            logger.info(f"🔄 Convirtiendo {len(images)} imágenes a formato compatible...")
+            images_convertidas = convert_image_list(images)
+            
+            for img_url in images_convertidas:
+                try:
+                    logger.info(f"📤 Enviando imagen: {img_url}")
+                    send_image(phone, img_url, caption="📷 Imagen del producto")
+                    logger.info(f"🖼️ Imagen enviada correctamente")
+                except Exception as e:
+                    logger.error(f"Error enviando imagen: {e}")
         
         # Enviar documentos (si hay)
         for doc in documents:

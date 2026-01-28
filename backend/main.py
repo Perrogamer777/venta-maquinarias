@@ -184,3 +184,42 @@ async def receive_webhook(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8080)
+
+@app.post("/api/upload-image")
+async def upload_image_endpoint(request: Request):
+    """Sube imagen a Cloud Storage"""
+    try:
+        from google.cloud import storage
+        import uuid
+        
+        form = await request.form()
+        file = form.get("file")
+        
+        if not file:
+            return {"success": False, "error": "No file"}
+        
+        contents = await file.read()
+        
+        # Validar tamaño (max 5MB)
+        if len(contents) > 5 * 1024 * 1024:
+            return {"success": False, "error": "Max 5MB"}
+        
+        # Nombre único
+        ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = str(uuid.uuid4())[:8]
+        filename = f"maquinarias/{timestamp}_{unique_id}.{ext}"
+        
+        # Subir
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(f"{PROJECT_ID}.appspot.com")
+        blob = bucket.blob(filename)
+        blob.upload_from_string(contents, content_type=file.content_type)
+        blob.make_public()
+        
+        logger.info(f"✅ Imagen: {filename}")
+        return {"success": True, "url": blob.public_url}
+        
+    except Exception as e:
+        logger.error(f"❌ Upload error: {e}")
+        return {"success": False, "error": str(e)}

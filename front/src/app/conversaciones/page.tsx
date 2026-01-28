@@ -81,29 +81,39 @@ export default function ConversacionesPage() {
         const unsubscribe = onSnapshot(
             collection(db, 'chats'),
             async (snapshot) => {
+                console.log('📊 Firestore snapshot received. Docs count:', snapshot.docs.length);
+                console.log('📊 Snapshot metadata:', snapshot.metadata);
+
                 const convs: Conversacion[] = [];
 
                 for (const docSnapshot of snapshot.docs) {
                     const telefono = docSnapshot.id;
                     const chatData = docSnapshot.data();
+                    console.log('💬 Processing chat:', telefono, chatData);
 
                     // Fetch last message for preview
                     const mensajesRef = collection(db, 'chats', telefono, 'messages');
                     const mensajesQuery = query(mensajesRef, orderBy('timestamp', 'desc'), limit(1));
                     const mensajesSnapshot = await getDocs(mensajesQuery);
 
+                    console.log('📨 Messages for', telefono, ':', mensajesSnapshot.docs.length);
+
                     let ultimoMensaje = '';
                     let ultimaFecha = '';
 
                     if (!mensajesSnapshot.empty) {
-                        const lastMsg = mensajesSnapshot.docs[0].data() as Mensaje;
-                        ultimoMensaje = lastMsg.parts?.[0]?.text || '';
+                        const lastMsg = mensajesSnapshot.docs[0].data() as any;
+                        // Soportar ambos formatos: nuevo (parts) y viejo (content)
+                        ultimoMensaje = lastMsg.parts?.[0]?.text || lastMsg.content || '';
                         ultimaFecha = lastMsg.timestamp || '';
                     }
 
-                    // Use lastMessageAt from chat document if available (more reliable)
+                    // Use last_interaction from chat document if available
                     let lastMessageAt: Date | null = null;
-                    if (chatData.lastMessageAt?.toDate) {
+                    if (chatData.last_interaction?.toDate) {
+                        lastMessageAt = chatData.last_interaction.toDate();
+                    } else if (chatData.lastMessageAt?.toDate) {
+                        // Fallback to lastMessageAt if exists
                         lastMessageAt = chatData.lastMessageAt.toDate();
                     } else if (ultimaFecha) {
                         const parsed = new Date(ultimaFecha);
@@ -116,10 +126,12 @@ export default function ConversacionesPage() {
                         telefono,
                         ultimoMensaje: ultimoMensaje.substring(0, 50) + (ultimoMensaje.length > 50 ? '...' : ''),
                         ultimaFecha: lastMessageAt && !isNaN(lastMessageAt.getTime()) ? lastMessageAt.toISOString() : ultimaFecha,
-                        agentePausado: chatData.agentePausado || false,
+                        agentePausado: chatData.agentePausado || chatData.agent_paused || false,
                         unread: chatData.unread || false,
                     });
                 }
+
+                console.log('✅ Total conversations loaded:', convs.length);
 
                 // Sort by last message date (most recent first)
                 convs.sort((a, b) => {
@@ -132,7 +144,7 @@ export default function ConversacionesPage() {
                 setLoading(false);
             },
             (error) => {
-                console.error('Error listening to conversations:', error);
+                console.error('❌ Error listening to conversations:', error);
                 setLoading(false);
             }
         );
@@ -189,7 +201,7 @@ export default function ConversacionesPage() {
 
             // Agregar mensaje localmente para feedback inmediato
             const newMsg: Mensaje = {
-                role: 'model',
+                role: 'assistant', // Cambiado de 'model' a 'assistant' para consistencia con backend
                 parts: [{ text: newMessage }],
                 timestamp: new Date().toISOString()
             };
@@ -278,6 +290,10 @@ export default function ConversacionesPage() {
 
         const unsubscribe = onSnapshot(mensajesQuery, (snapshot) => {
             const msgs: Mensaje[] = snapshot.docs.map(doc => doc.data() as Mensaje);
+            console.log('📩 Mensajes cargados:', msgs.length);
+            if (msgs.length > 0) {
+                console.log('📩 Primer mensaje:', msgs[0]);
+            }
             setMensajes(msgs);
         });
 
@@ -463,54 +479,64 @@ export default function ConversacionesPage() {
                                 </div>
                             </div>
 
-                            {/* Messages */}
-                            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                                {loadingMensajes ? (
-                                    <div className="flex items-center justify-center h-full">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-                                    </div>
-                                ) : (
-                                    mensajes.map((mensaje, index) => (
-                                        <div
-                                            key={index}
-                                            className={`flex ${mensaje.role === 'model' ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            <div
-                                                className={`max-w-[70%] px-4 py-3 ${mensaje.role === 'model' ? 'bubble-user' : 'bubble-bot'
-                                                    }`}
-                                            >
-                                                {/* Mostrar imagen si existe */}
-                                                {mensaje.image_url && (
-                                                    <div className="mb-2">
-                                                        <img
-                                                            src={mensaje.image_url}
-                                                            alt="Imagen de WhatsApp"
-                                                            className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                                                            style={{ maxHeight: '300px' }}
-                                                            onClick={() => window.open(mensaje.image_url, '_blank')}
-                                                        />
-                                                    </div>
-                                                )}
-                                                {/* Mostrar texto (o caption de imagen) */}
-                                                {mensaje.parts?.[0]?.text && (
-                                                    <p className={`${mensaje.role === 'model' ? 'text-white' : 'text-gray-900 dark:text-white'} whitespace-pre-wrap`}>
-                                                        {mensaje.parts[0].text}
-                                                    </p>
-                                                )}
-                                                {/* Indicador de tipo imagen sin URL (para cuando aún no está implementado en backend) */}
-                                                {mensaje.type === 'image' && !mensaje.image_url && (
-                                                    <p className={`${mensaje.role === 'model' ? 'text-indigo-200' : 'text-gray-500'} text-sm italic`}>
-                                                        📷 Imagen enviada
-                                                    </p>
-                                                )}
-                                                <p className={`text-xs mt-1 ${mensaje.role === 'model' ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'}`}>
-                                                    {formatDate(mensaje.timestamp)}
-                                                </p>
-                                            </div>
+                            {/* Messages - flex-1 takes remaining space */}
+                            <div className="flex-1 overflow-y-auto px-4 pt-4 min-h-0">
+                                <div className="space-y-3 pb-4">
+                                    {loadingMensajes ? (
+                                        <div className="flex items-center justify-center h-full">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
                                         </div>
-                                    ))
-                                )}
-                                <div ref={messagesEndRef} />
+                                    ) : (
+                                        mensajes.map((mensaje, index) => (
+                                            <div
+                                                key={index}
+                                                className={`flex ${(mensaje.role === 'model' || mensaje.role === 'assistant') ? 'justify-end' : 'justify-start'}`}
+                                            >
+                                                <div
+                                                    className={`max-w-[70%] px-4 py-3 ${(mensaje.role === 'model' || mensaje.role === 'assistant') ? 'bubble-user' : 'bubble-bot'
+                                                        }`}
+                                                >
+                                                    {/* Mostrar imagen si existe */}
+                                                    {mensaje.image_url && (
+                                                        <div className="mb-2">
+                                                            <img
+                                                                src={mensaje.image_url}
+                                                                alt="Imagen de WhatsApp"
+                                                                className="max-w-full rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                                style={{ maxHeight: '300px' }}
+                                                                onClick={() => window.open(mensaje.image_url, '_blank')}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    {/* Mostrar texto (soporta formato viejo y nuevo) */}
+                                                    {(() => {
+                                                        // Formato nuevo: parts[0].text
+                                                        const textoNuevo = mensaje.parts?.[0]?.text;
+                                                        // Formato viejo: content
+                                                        const textoViejo = (mensaje as any).content;
+                                                        const texto = textoNuevo || textoViejo;
+
+                                                        return texto ? (
+                                                            <p className={`${(mensaje.role === 'model' || mensaje.role === 'assistant') ? 'text-white' : 'text-gray-900 dark:text-white'} whitespace-pre-wrap`}>
+                                                                {texto}
+                                                            </p>
+                                                        ) : null;
+                                                    })()}
+                                                    {/* Indicador de tipo imagen sin URL (para cuando aún no está implementado en backend) */}
+                                                    {mensaje.type === 'image' && !mensaje.image_url && (
+                                                        <p className={`${(mensaje.role === 'model' || mensaje.role === 'assistant') ? 'text-indigo-200' : 'text-gray-500'} text-sm italic`}>
+                                                            📷 Imagen enviada
+                                                        </p>
+                                                    )}
+                                                    <p className={`text-xs mt-1 ${(mensaje.role === 'model' || mensaje.role === 'assistant') ? 'text-indigo-200' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                        {formatDate(mensaje.timestamp)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
                             </div>
 
                             {/* Message Input */}
