@@ -1,5 +1,5 @@
 """
-Servicio de WhatsApp para envío de mensajes.
+Servicio de WhatsApp para envío y recepción de mensajes/medios.
 """
 import logging
 import requests
@@ -8,8 +8,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Límite de caracteres de WhatsApp
-MAX_CHARS = 4000  # Dejamos margen de seguridad
-
+MAX_CHARS = 4000
 
 def split_message(message: str, max_length: int = MAX_CHARS) -> list:
     """Divide un mensaje largo en chunks respetando saltos de línea"""
@@ -21,13 +20,11 @@ def split_message(message: str, max_length: int = MAX_CHARS) -> list:
     current_chunk = ""
     
     for line in lines:
-        # Si agregar esta línea excede el límite
         if len(current_chunk) + len(line) + 1 > max_length:
             if current_chunk:
                 chunks.append(current_chunk.strip())
                 current_chunk = line + '\n'
             else:
-                # Línea individual muy larga - forzar corte
                 chunks.append(line[:max_length])
                 current_chunk = line[max_length:] + '\n'
         else:
@@ -40,136 +37,107 @@ def split_message(message: str, max_length: int = MAX_CHARS) -> list:
 
 
 def send_message(phone: str, message: str) -> bool:
-    """Envía un mensaje de WhatsApp (divide automáticamente si es muy largo)"""
+    """Envía un mensaje de texto"""
     if not settings.META_TOKEN or not settings.PHONE_NUMBER_ID:
         logger.warning("⚠️ META_TOKEN o PHONE_NUMBER_ID no configurados")
         return False
     
-    # Dividir mensaje si es necesario
     chunks = split_message(message)
-    
-    if len(chunks) > 1:
-        logger.info(f"📨 Mensaje dividido en {len(chunks)} partes")
-    
     url = f"https://graph.facebook.com/v18.0/{settings.PHONE_NUMBER_ID}/messages"
     headers = {
         "Authorization": f"Bearer {settings.META_TOKEN}",
         "Content-Type": "application/json"
     }
     
-    all_success = True
-    for i, chunk in enumerate(chunks, 1):
+    for chunk in chunks:
         data = {
             "messaging_product": "whatsapp",
             "to": phone,
             "text": {"body": chunk}
         }
-        
         try:
-            response = requests.post(url, headers=headers, json=data, timeout=10)
-            response.raise_for_status()
-            logger.info(f"✅ Parte {i}/{len(chunks)} enviada a {phone}")
-        except requests.exceptions.RequestException as e:
-            error_msg = f"❌ Error enviando parte {i}/{len(chunks)}: {e}"
-            if e.response is not None:
-                 error_msg += f" | Detalle: {e.response.text}"
-            logger.error(error_msg)
-            all_success = False
+            requests.post(url, headers=headers, json=data, timeout=10).raise_for_status()
         except Exception as e:
-            logger.error(f"❌ Error inesperado enviando parte {i}: {e}")
-            all_success = False
-    
-    return all_success
+            logger.error(f"❌ Error enviando mensaje: {e}")
+            return False
+    return True
 
 
 def send_image(phone: str, image_url: str, caption: str = "") -> bool:
-    """
-    Envía una imagen por WhatsApp.
-    
-    Args:
-        phone: Número de teléfono destino
-        image_url: URL pública de la imagen
-        caption: Texto opcional debajo de la imagen
-    
-    Returns:
-        True si se envió correctamente
-    """
+    """Envía una imagen"""
     if not settings.META_TOKEN or not settings.PHONE_NUMBER_ID:
-        logger.warning("⚠️ META_TOKEN o PHONE_NUMBER_ID no configurados")
         return False
     
     url = f"https://graph.facebook.com/v18.0/{settings.PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {settings.META_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {settings.META_TOKEN}", "Content-Type": "application/json"}
     
     data = {
         "messaging_product": "whatsapp",
         "to": phone,
         "type": "image",
-        "image": {
-            "link": image_url
-        }
+        "image": {"link": image_url}
     }
-    
-    # Añadir caption si está presente
-    if caption and caption.strip():
-        data["image"]["caption"] = caption[:1024]  # WhatsApp limit
+    if caption: data["image"]["caption"] = caption[:1024]
     
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-        logger.info(f"✅ Imagen enviada a {phone}")
+        requests.post(url, headers=headers, json=data, timeout=10).raise_for_status()
         return True
-    except requests.exceptions.RequestException as e:
-        error_msg = f"❌ Error enviando imagen: {e}"
-        if e.response is not None:
-            error_msg += f" | Detalle: {e.response.text}"
-        logger.error(error_msg)
-        return False
     except Exception as e:
-        logger.error(f"❌ Error inesperado enviando imagen: {e}")
+        logger.error(f"❌ Error enviando imagen: {e}")
         return False
 
 
 def send_document(phone: str, document_url: str, filename: str = "", caption: str = "") -> bool:
-    """Envía un documento (PDF, etc.) por WhatsApp"""
+    """Envía un documento"""
     if not settings.META_TOKEN or not settings.PHONE_NUMBER_ID:
-        logger.warning("⚠️ META_TOKEN o PHONE_NUMBER_ID no configurados")
         return False
     
     url = f"https://graph.facebook.com/v18.0/{settings.PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {settings.META_TOKEN}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {settings.META_TOKEN}", "Content-Type": "application/json"}
     
     data = {
         "messaging_product": "whatsapp",
         "to": phone,
         "type": "document",
-        "document": {
-            "link": document_url
-        }
+        "document": {"link": document_url}
     }
-    
-    if filename:
-        data["document"]["filename"] = filename
-    if caption:
-        data["document"]["caption"] = caption[:1024]
+    if filename: data["document"]["filename"] = filename
+    if caption: data["document"]["caption"] = caption[:1024]
     
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=10)
-        response.raise_for_status()
-        logger.info(f"✅ Documento enviado a {phone}")
+        requests.post(url, headers=headers, json=data, timeout=10).raise_for_status()
         return True
-    except requests.exceptions.RequestException as e:
-        error_msg = f"❌ Error enviando documento: {e}"
-        if e.response is not None:
-            error_msg += f" | Detalle: {e.response.text}"
-        logger.error(error_msg)
-        return False
     except Exception as e:
-        logger.error(f"❌ Error inesperado enviando documento: {e}")
+        logger.error(f"❌ Error enviando documento: {e}")
         return False
+
+
+def get_media_url(media_id: str) -> str:
+    """Obtiene la URL de descarga de un medio de WhatsApp"""
+    if not settings.META_TOKEN: return ""
+    
+    url = f"https://graph.facebook.com/v18.0/{media_id}"
+    headers = {"Authorization": f"Bearer {settings.META_TOKEN}"}
+    
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        return resp.json().get("url", "")
+    except Exception as e:
+        logger.error(f"❌ Error obteniendo URL de media {media_id}: {e}")
+        return ""
+
+
+def download_media(media_url: str) -> bytes:
+    """Descarga el contenido binario del medio"""
+    if not settings.META_TOKEN: return None
+    
+    headers = {"Authorization": f"Bearer {settings.META_TOKEN}"}
+    
+    try:
+        resp = requests.get(media_url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        return resp.content
+    except Exception as e:
+        logger.error(f"❌ Error descargando media: {e}")
+        return None

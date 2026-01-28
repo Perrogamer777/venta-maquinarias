@@ -3,8 +3,9 @@ export interface Mensaje {
     role: 'user' | 'model' | 'assistant'; // 'model' legacy, 'assistant' from backend
     parts: { text: string }[];
     timestamp: string;
-    type?: 'text' | 'image';
+    type?: 'text' | 'image' | 'document' | 'audio';
     image_url?: string;
+    media_url?: string;
 }
 
 // Conversación (documento principal)
@@ -35,6 +36,7 @@ export interface Cotizacion {
     presupuesto_cliente?: number;
     precio_cotizado?: number;
     precio_total?: number; // Para cotización múltiple
+    pdf_url?: string; // URL del PDF generado
     notas?: string;
 }
 

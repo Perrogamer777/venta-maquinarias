@@ -10,7 +10,7 @@ import type { Cotizacion } from '@/types';
 import {
     Kanban, MoreHorizontal, Calendar,
     DollarSign, User, Building2, Phone, Edit2, Trash2,
-    X, Check, AlertCircle
+    AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -114,6 +114,14 @@ export default function PipelinePage() {
         }
     };
 
+    const handleStatusChange = async (id: string, newStatus: Cotizacion['estado']) => {
+        try {
+            await updateDoc(doc(db, 'cotizaciones', id), { estado: newStatus });
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    };
+
     const formatDate = (dateStr: string) => {
         try {
             return format(new Date(dateStr), "d MMM", { locale: es });
@@ -202,10 +210,11 @@ export default function PipelinePage() {
                                                                     <span className="text-xs font-mono text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded">
                                                                         {item.codigo_cotizacion}
                                                                     </span>
-                                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <div className="hidden group-hover:flex gap-1 transition-opacity">
                                                                         <button
                                                                             onClick={() => handleDelete(item.id!, item.codigo_cotizacion)}
-                                                                            className="p-1 hover:bg-red-50 text-red-500 rounded"
+                                                                            className="p-1 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded"
+                                                                            title="Eliminar"
                                                                         >
                                                                             <Trash2 size={14} />
                                                                         </button>
@@ -213,7 +222,11 @@ export default function PipelinePage() {
                                                                 </div>
 
                                                                 <h4 className="font-medium text-gray-900 dark:text-white mb-1 line-clamp-2">
-                                                                    {item.maquinaria}
+                                                                    {item.maquinarias
+                                                                        ? (item.maquinarias.length > 1
+                                                                            ? `${item.maquinarias[0]} +${item.maquinarias.length - 1}`
+                                                                            : item.maquinarias[0])
+                                                                        : item.maquinaria}
                                                                 </h4>
 
                                                                 <div className="space-y-1 mb-3">

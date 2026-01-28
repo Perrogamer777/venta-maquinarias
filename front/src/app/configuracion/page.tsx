@@ -431,7 +431,7 @@ export default function ConfiguracionPage() {
 
                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                                 Escribe el prompt completo que define cómo debe comportarse el agente.
-                                Puedes usar las variables: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{'{cabanas}'}</code>,
+                                Puedes usar las variables: <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">{'{maquinarias}'}</code>,
                                 <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded ml-1">{'{servicios}'}</code>,
                                 <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded ml-1">{'{fecha_actual}'}</code>
                             </p>
@@ -459,12 +459,12 @@ export default function ConfiguracionPage() {
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Variables Disponibles</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                 {[
-                                    { var: '{cabanas}', desc: 'Lista de cabañas con descripciones y precios' },
+                                    { var: '{maquinarias}', desc: 'Lista de maquinarias con descripciones y precios' },
                                     { var: '{servicios}', desc: 'Lista de servicios adicionales disponibles' },
                                     { var: '{fecha_actual}', desc: 'Fecha y hora actual del sistema' },
                                     { var: '{cliente_nombre}', desc: 'Nombre del cliente (si está disponible)' },
                                     { var: '{historial}', desc: 'Historial de la conversación actual' },
-                                    { var: '{reservas_cliente}', desc: 'Reservas previas del cliente' },
+                                    { var: '{ventas_cliente}', desc: 'Ventas previas del cliente' },
                                 ].map((item) => (
                                     <div key={item.var} className="flex items-start gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                                         <code className="text-purple-600 dark:text-purple-400 font-mono bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">

@@ -7,7 +7,7 @@ import { db } from '@/lib/firebase';
 import { useConfig } from '@/contexts/ConfigContext';
 import { ESTADOS_COTIZACION } from '@/lib/businessTypes';
 import type { Cotizacion, Maquinaria } from '@/types';
-import { Search, FileText, User, Building2, Mail, Phone, X, Plus, Edit2, Trash2, Calendar, DollarSign, Save, Circle } from 'lucide-react';
+import { Search, FileText, User, Building2, Mail, Phone, X, Plus, Edit2, Trash2, Calendar, DollarSign, Save, Circle, CheckCircle, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -112,6 +112,14 @@ export default function CotizacionesPage() {
             setSelectedCotizacion(null);
         } catch (error) {
             console.error('Error deleting cotizacion:', error);
+        }
+    };
+
+    const handleStatusChange = async (id: string, newStatus: Cotizacion['estado']) => {
+        try {
+            await setDoc(doc(db, 'cotizaciones', id), { estado: newStatus }, { merge: true });
+        } catch (error) {
+            console.error('Error updating status:', error);
         }
     };
 
@@ -291,7 +299,9 @@ export default function CotizacionesPage() {
                                                 <td className="px-4 py-3">
                                                     <span className="text-sm text-gray-700 dark:text-gray-300 block max-w-xs truncate" title={cotizacion.maquinarias?.join(", ") || cotizacion.maquinaria}>
                                                         {cotizacion.maquinarias
-                                                            ? cotizacion.maquinarias.join(", ")
+                                                            ? (cotizacion.maquinarias.length > 1
+                                                                ? `${cotizacion.maquinarias[0]} +${cotizacion.maquinarias.length - 1}`
+                                                                : cotizacion.maquinarias[0])
                                                             : cotizacion.maquinaria}
                                                     </span>
                                                 </td>
@@ -314,14 +324,34 @@ export default function CotizacionesPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex justify-end gap-1" onClick={e => e.stopPropagation()}>
+                                                        {/* Acciones Rápidas */}
+                                                        {cotizacion.estado !== 'VENDIDA' && cotizacion.estado !== 'PERDIDA' && (
+                                                            <>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleStatusChange(cotizacion.id!, 'VENDIDA'); }}
+                                                                    className="p-2 hover:bg-green-50 text-green-600 dark:hover:bg-green-900/20 rounded-lg"
+                                                                    title="Marcar como Vendida"
+                                                                >
+                                                                    <CheckCircle size={14} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleStatusChange(cotizacion.id!, 'PERDIDA'); }}
+                                                                    className="p-2 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 rounded-lg"
+                                                                    title="Marcar como Perdida"
+                                                                >
+                                                                    <XCircle size={14} />
+                                                                </button>
+                                                            </>
+                                                        )}
+
                                                         <button
-                                                            onClick={() => handleEdit(cotizacion)}
+                                                            onClick={(e) => { e.stopPropagation(); handleEdit(cotizacion); }}
                                                             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"
                                                         >
                                                             <Edit2 size={14} className="text-gray-500" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDelete(cotizacion.id!, cotizacion.codigo_cotizacion)}
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(cotizacion.id!, cotizacion.codigo_cotizacion); }}
                                                             className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                                                         >
                                                             <Trash2 size={14} className="text-red-500" />
@@ -546,6 +576,18 @@ export default function CotizacionesPage() {
                                     </span>
                                 </div>
 
+                                {selectedCotizacion.pdf_url && (
+                                    <a
+                                        href={selectedCotizacion.pdf_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center justify-center gap-2 w-full p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl font-medium transition-colors"
+                                    >
+                                        <FileText size={18} />
+                                        Ver Documento PDF
+                                    </a>
+                                )}
+
                                 <div className="space-y-4">
                                     <div>
                                         <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Maquinaria(s)</p>
@@ -613,16 +655,37 @@ export default function CotizacionesPage() {
                                 </div>
 
                                 <div className="pt-4 border-t border-gray-200 dark:border-slate-700 flex gap-2">
+                                    {/* Botones de acción también en el sidebar */}
+                                    {selectedCotizacion.estado !== 'VENDIDA' && selectedCotizacion.estado !== 'PERDIDA' && (
+                                        <>
+                                            <button
+                                                onClick={() => { handleStatusChange(selectedCotizacion.id!, 'VENDIDA'); setSelectedCotizacion(null); }}
+                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-xl font-medium"
+                                            >
+                                                <CheckCircle size={16} />
+                                                Vender
+                                            </button>
+                                            <button
+                                                onClick={() => { handleStatusChange(selectedCotizacion.id!, 'PERDIDA'); setSelectedCotizacion(null); }}
+                                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-xl font-medium"
+                                            >
+                                                <XCircle size={16} />
+                                                Perder
+                                            </button>
+                                        </>
+                                    )}
+
                                     <button
                                         onClick={() => { handleEdit(selectedCotizacion); setSelectedCotizacion(null); }}
-                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium"
+                                        className="px-3 py-2.5 border border-gray-200 hover:bg-gray-50 dark:border-gray-700 rounded-xl font-medium"
+                                        title="Editar"
                                     >
                                         <Edit2 size={16} />
-                                        Editar
                                     </button>
                                     <button
                                         onClick={() => { handleDelete(selectedCotizacion.id!, selectedCotizacion.codigo_cotizacion); setSelectedCotizacion(null); }}
-                                        className="px-4 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 rounded-xl font-medium"
+                                        className="px-3 py-2.5 border border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/20 rounded-xl font-medium"
+                                        title="Eliminar"
                                     >
                                         <Trash2 size={16} />
                                     </button>

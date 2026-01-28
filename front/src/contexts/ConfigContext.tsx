@@ -19,6 +19,11 @@ interface Nomenclature {
         singular: string;
         plural: string;
     };
+    clients: {
+        singular: string;
+        plural: string;
+    };
+    promotions: string;
     calendar: string;
     statistics: string;
 }
@@ -47,6 +52,11 @@ const defaultNomenclature: Nomenclature = {
         singular: 'Maquinaria',
         plural: 'Maquinarias'
     },
+    clients: {
+        singular: 'Agricultor',
+        plural: 'Agricultores'
+    },
+    promotions: 'Catálogo',
     calendar: 'Pipeline de Ventas',
     statistics: 'Estadísticas'
 };

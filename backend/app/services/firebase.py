@@ -22,35 +22,45 @@ if not firebase_admin._apps:
 db = firestore.client()
 
 
-def save_message(phone: str, role: str, content: str) -> None:
+def save_message_firestore(phone: str, role: str, content: str, msg_type: str = "text", media_url: str = None) -> None:
     """Guarda un mensaje en Firestore"""
     try:
         now = datetime.now()
         
         # IMPORTANTE: Crear/actualizar el documento del chat PRIMERO
-        # Sin esto, el documento padre no existe y no aparece en consultas
         chat_ref = db.collection("chats").document(phone)
         chat_ref.set({
             "last_interaction": now,
             "phone": phone,
             "agentePausado": False,
-            "unread": role == "user"  # Marcar como no leído si es mensaje del usuario
+            "unread": role == "user"
         }, merge=True)
         
-        # Ahora guardar el mensaje en la subcolección
-        chat_ref.collection("messages").add({
+        # Datos del mensaje
+        msg_data = {
             "role": role,
-            "content": content,  # Guardar contenido plano para fácil lectura
-            "parts": [{"text": content}],  # Estructura compatible con Vertex AI
-            "timestamp": now.isoformat()
-        })
+            "content": content or "",
+            "timestamp": now.isoformat(),
+            "type": msg_type
+        }
         
-        logger.info(f"💾 Mensaje guardado: {phone} - {role}")
+        if media_url:
+            msg_data["media_url"] = media_url
+            msg_data["image_url"] = media_url # Retrocompatibilidad frontend
+            
+        # Structure for Vertex AI (text only)
+        if content:
+            msg_data["parts"] = [{"text": content}]
+        
+        # Ahora guardar el mensaje en la subcolección
+        chat_ref.collection("messages").add(msg_data)
+        
+        logger.info(f"💾 Mensaje guardado: {phone} - {role} ({msg_type})")
     except Exception as e:
         logger.error(f"Error guardando mensaje: {e}")
 
 
-def get_chat_history(phone: str, limit: int = 50) -> list:
+def get_chat_history_firestore(phone: str, limit: int = 50) -> list:
     """Obtiene el historial del chat"""
     try:
         messages = []

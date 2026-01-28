@@ -201,7 +201,7 @@ export default function HomePage() {
             id: `cotizacion-${cotizacion.id}`,
             type: 'cotizacion' as const,
             title: cotizacion.cliente_nombre || 'Nueva cotización',
-            description: `${cotizacion.maquinaria} - ${cotizacion.cliente_empresa || 'Sin empresa'}`,
+            description: `${cotizacion.maquinarias?.join(", ") || cotizacion.maquinaria || 'Varios'} - ${cotizacion.cliente_empresa || 'Sin empresa'}`,
             timestamp: parseDate(cotizacion.created_at)!,
             estado: cotizacion.estado,
             link: '/cotizaciones'

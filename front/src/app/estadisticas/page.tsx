@@ -314,7 +314,7 @@ export default function EstadisticasPage() {
                                     <div className="text-5xl font-bold text-indigo-600 dark:text-indigo-400">
                                         {conversionData.tasa.toFixed(1)}%
                                     </div>
-                                    <p className="text-gray-600 dark:text-gray-400 mt-2">de chats terminan en reserva</p>
+                                    <p className="text-gray-600 dark:text-gray-400 mt-2">de chats terminan en venta</p>
                                 </div>
 
                                 {/* Stats grid */}
@@ -328,12 +328,12 @@ export default function EstadisticasPage() {
                                         className="text-center p-3 bg-green-100 dark:bg-green-500/20 rounded-lg hover:bg-green-200 dark:hover:bg-green-500/30 transition-colors cursor-pointer"
                                     >
                                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">{conversionData.chatsConReserva}</div>
-                                        <div className="text-xs text-gray-600 dark:text-gray-400">Con Reserva</div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400">Con Venta</div>
                                         <div className="text-xs text-green-600 dark:text-green-400 mt-1">Ver clientes →</div>
                                     </button>
                                     <div className="text-center p-3 bg-red-100 dark:bg-red-500/20 rounded-lg">
                                         <div className="text-2xl font-bold text-red-600 dark:text-red-400">{conversionData.sinReserva}</div>
-                                        <div className="text-xs text-gray-600 dark:text-gray-400">Sin Reserva</div>
+                                        <div className="text-xs text-gray-600 dark:text-gray-400">Sin Venta</div>
                                     </div>
                                 </div>
                             </div>
@@ -341,7 +341,7 @@ export default function EstadisticasPage() {
 
                         {/* Reservations per week */}
                         <div className="glass rounded-xl p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Reservas por Semana</h3>
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ventas por Semana</h3>
                             <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={reservasPorSemana}>
@@ -365,7 +365,7 @@ export default function EstadisticasPage() {
                         {/* Cabañas más reservadas - Rediseño profesional */}
                         <div className="glass rounded-xl p-6">
                             <div className="flex items-center justify-between mb-5">
-                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{nomenclature.units.plural} más Reservadas</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{nomenclature.units.plural} más Vendidas</h3>
                                 <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
                                     {cabanaStats.reduce((sum, c) => sum + c.value, 0)} total
                                 </span>
@@ -499,7 +499,7 @@ export default function EstadisticasPage() {
                                         );
                                     })
                                 ) : (
-                                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No hay reservas este mes</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No hay ventas este mes</p>
                                 )}
                             </div>
 
@@ -533,10 +533,10 @@ export default function EstadisticasPage() {
                         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
                             <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                 <CheckCircle size={24} className="text-green-500" />
-                                Clientes con Reservas
+                                Clientes con Ventas
                             </h3>
                             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                                {allReservas.length} reserva{allReservas.length !== 1 ? 's' : ''} en total
+                                {allReservas.length} venta{allReservas.length !== 1 ? 's' : ''} en total
                             </p>
                         </div>
 
@@ -573,7 +573,7 @@ export default function EstadisticasPage() {
                                                     )}
                                                 </div>
                                                 <span className="text-xs bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full">
-                                                    {data.reservas.length} reserva{data.reservas.length !== 1 ? 's' : ''}
+                                                    {data.reservas.length} venta{data.reservas.length !== 1 ? 's' : ''}
                                                 </span>
                                             </div>
                                         </div>

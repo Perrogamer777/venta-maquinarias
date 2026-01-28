@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { collection, getDocs, query, orderBy, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import {
-    Search, MessageSquare, Send, Zap, PauseCircle, PlayCircle, Eye, EyeOff,
+    Search, MessageSquare, Send, Zap, PauseCircle, PlayCircle, Eye, EyeOff, FileText,
     User, UserCircle, UserCircle2, UserCheck, UserCog, Users, CircleUser, Contact, PersonStanding, Baby
 } from 'lucide-react';
 import type { Conversacion, Mensaje } from '@/types';
@@ -507,6 +507,26 @@ export default function ConversacionesPage() {
                                                                 onClick={() => window.open(mensaje.image_url, '_blank')}
                                                             />
                                                         </div>
+                                                    )}
+
+                                                    {/* Mostrar Documento (PDF) */}
+                                                    {(mensaje.type === 'document' || (mensaje.media_url && mensaje.media_url.endsWith('.pdf'))) && (
+                                                        <a
+                                                            href={mensaje.media_url || mensaje.image_url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-3 p-3 mb-2 bg-gray-50/50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl group hover:bg-gray-100 dark:hover:bg-gray-800 transition-all no-underline"
+                                                        >
+                                                            <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg group-hover:scale-110 transition-transform">
+                                                                <FileText className="text-red-500" size={20} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0 text-left">
+                                                                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                                                    {mensaje.parts?.[0]?.text || "Documento Adjunto"}
+                                                                </p>
+                                                                <p className="text-xs text-blue-500 group-hover:underline">Abrir PDF</p>
+                                                            </div>
+                                                        </a>
                                                     )}
                                                     {/* Mostrar texto (soporta formato viejo y nuevo) */}
                                                     {(() => {

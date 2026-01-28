@@ -14,7 +14,7 @@ from vertexai.generative_models import (
 )
 from app.core.config import settings
 from app.services.maquinarias import search_maquinarias, get_maquinaria
-from app.services.quotation import generate_quotation_pdf, save_quotation_to_firestore
+from app.services.quotation import generate_quotation_pdf, save_quotation_to_firestore, update_quotation_status
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +48,26 @@ Tu objetivo es ayudar a los agricultores a encontrar la maquinaria perfecta, res
 - **CONTEXTO**: Si el usuario dice "ese", "lo quiero", "cotízalo", **ASUME** que habla del ÚLTIMO PRODUCTO que mostraste. NO preguntes el nombre de nuevo, **BÚSCALO EN EL HISTORIAL**.
 </constraints>
 
+<negotiation_rules>
+1. **Descuentos**:
+   - Si el cliente dice que está "muy caro" o pide rebaja, PUEDES ofrecer un descuento MÁXIMO del 10%.
+   - **NUNCA** ofrezcas más del 10%. Es el tope absoluto.
+   - Si ofreces descuento o el cliente acepta el precio, cambia el estado a `NEGOCIANDO`.
+   
+2. **Cierre de Venta**:
+   - Si el cliente dice "ACEPTO", "ME LO LLEVO", "COMPRO", o confirma el cierre, ¡FELICIDADES!
+   - Cambia el estado a `VENDIDA`.
+   - Felicítalo con emojis (🎉🤝).
+
+3. **Venta Perdida**:
+   - Si el cliente rechaza definitivamente (ej: "no me alcanza", "muy caro, chao"), sé amable y cambia el estado a `PERDIDA`.
+</negotiation_rules>
+
 <tools_usage>
 1. `buscar_maquinaria`: Solo para búsquedas iniciales.
 2. `mostrar_imagenes_por_nombre`: Úsala AUTOMÁTICAMENTE si el cliente muestra interés.
 3. `generar_cotizacion`: Si el usuario da nombre/mail/teléfono, EXTRAE los datos y LLAMA A LA FUNCIÓN. Si falta algún dato, pide SOLO el que falta.
+4. `actualizar_estado_cotizacion`: Úsala CUANDO la negociación avance (descuentos, cierre, perdida).
 </tools_usage>
 
 <examples>
@@ -115,7 +131,20 @@ cotizar_func = FunctionDeclaration(
     }
 )
 
-tools = Tool(function_declarations=[buscar_func, mostrar_imagenes_func, cotizar_func])
+estado_func = FunctionDeclaration(
+    name="actualizar_estado_cotizacion",
+    description="Actualiza el estado de la cotización según la negociación. (NEGOCIANDO, VENDIDA, PERDIDA)",
+    parameters={
+        "type": "object",
+        "properties": {
+            "cliente_telefono": {"type": "string"},
+            "nuevo_estado": {"type": "string", "enum": ["NEGOCIANDO", "VENDIDA", "PERDIDA"]}
+        },
+        "required": ["cliente_telefono", "nuevo_estado"]
+    }
+)
+
+tools = Tool(function_declarations=[buscar_func, mostrar_imagenes_func, cotizar_func, estado_func])
 
 
 def execute_func(name: str, args: dict) -> dict:
@@ -199,7 +228,9 @@ def execute_func(name: str, args: dict) -> dict:
                 maquinaria_ids=[m["id"] for m in maquinarias_encontradas],
                 maquinaria_nombres=[m["nombre"] for m in maquinarias_encontradas],
                 precio_total=total,
-                pdf_url=pdf
+                pdf_url=pdf,
+                # Al generar PDF pasamos directo a CONTACTADO (Cotizado)
+                estado="CONTACTADO"
             )
             return {
                 "success": True,
@@ -208,6 +239,21 @@ def execute_func(name: str, args: dict) -> dict:
                 "precio_total": total
             }
         return {"success": False}
+
+    elif name == "actualizar_estado_cotizacion":
+        telefono = args.get("cliente_telefono")
+        estado = args.get("nuevo_estado")
+        
+        success = update_quotation_status(telefono, estado)
+        if success:
+            messages = {
+                "NEGOCIANDO": "Perfecto, aplicaré ese descuento especial del 10% para avanzar. 🤝",
+                "VENDIDA": "¡Excelente decisión! 🎉 Bienvenido a la familia MACI.",
+                "PERDIDA": "Entiendo. Gracias por cotizar con nosotros. 🙏"
+            }
+            return {"success": True, "mensaje": messages.get(estado, "Estado actualizado.")}
+        else:
+            return {"success": False, "mensaje": "No encontré una cotización activa para actualizar."}
     
     return {"success": False}
 
@@ -240,44 +286,52 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                     if fc.name == "buscar_maquinaria":
                         if fr.get("success"):
                             productos = fr["productos"]
-                            lista = []
-                            for i, p in enumerate(productos, 1):
-                                precio = f"${p['precio']:,.0f}".replace(",", ".") if p['precio'] else "Consultar"
-                                desc = p['descripcion'] if p['descripcion'] else "Consulta por más detalles"
-                                
-                                # Formato mejorado con bullets (WhatsApp compatible)
-                                item = f"{i}. *{p['nombre']}*\n"
-                                item += f"   💰 Precio: {precio} + IVA\n"
-                                if desc and len(desc) > 10:
-                                    item += f"   📝 {desc}\n"
-                                if p.get('ficha_tecnica_pdf'):
-                                    item += f"   📋 Con ficha técnica disponible\n"
+                            # Convertir a texto para el modelo
+                            productos_txt = json.dumps(productos, ensure_ascii=False, indent=2)
                             
-                                lista.append(item)
+                            # Prompt secundario para que el modelo redacte la respuesta final
+                            summary_prompt = (
+                                f"CONTEXTO: El usuario preguntó '{user_message}'.\n"
+                                f"RESULTADO BÚSQUEDA: Se encontraron estos productos:\n{productos_txt}\n\n"
+                                f"INSTRUCCIÓN: Como vendedor experto, presenta estos productos al cliente.\n"
+                                f"1. Crea un resumen atractivo de cada uno. NO cortes frases a medias. Resume la descripción si es muy larga.\n"
+                                f"2. Muestra el precio. Si es 0 o null, di 'Consultar precio'.\n"
+                                f"3. Si hay muchos > 5, resume los más importantes y ofrece mostrar más.\n"
+                                f"4. Usa emojis (🚜, 💰, ✅) pero sin saturar.\n"
+                                f"5. Al final, invita a ver fotos o cotizar.\n"
+                                f"6. Formato limpio para WhatsApp (usa *negritas* para nombres).\n"
+                            )
                             
-                            intro = "🚜 *Nuestro Catálogo de Maquinaria*\n\n" if len(productos) > 5 else "🚜 *Productos Disponibles*\n\n"
-                            
-                            footer = "\n\n💬 ¿Te interesa ver fotos o detalles de alguno? Dime cuál."
-                            if len(productos) >= 6:
-                                footer = "\n\n📢 *Mostrando los primeros productos. Dime qué buscas para ver más.*" + footer
-                                
-                            result["text"] = intro + "\n".join(lista) + footer
+                            try:
+                                summary_response = model.generate_content(summary_prompt, generation_config=GenerationConfig(temperature=0.7))
+                                result["text"] = summary_response.text
+                            except Exception as e:
+                                logger.error(f"Error generando resumen: {e}")
+                                # Fallback básico por si falla la generación
+                                result["text"] = "🚜 *Productos encontrados:*\n\n"
+                                for p in productos:
+                                    precio = f"${p['precio']:,.0f}" if p['precio'] else "Consultar"
+                                    result["text"] += f"• *{p['nombre']}* - 💰 {precio}\n"
+                                result["text"] += "\n¿Te gustaría ver fotos o cotizar alguno?"
+
                         else:
                             # Fallo la búsqueda exacta, usamos inteligencia del modelo para recuperar la venta
+                            # Mantener lógica de recovery existente
                             consulta = dict(fc.args).get("consulta", "lo que buscas")
                             prompt_fallback = (
                                 f"Buscaste '{consulta}' en el inventario y NO hay resultados exactos.\n"
                                 f"Como vendedor experto, NO digas solo 'no hay'.\n"
                                 f"1. Dile que no tienes '{consulta}' exacto.\n"
                                 f"2. Pregúntale qué labor agrícola necesita hacer (fumigar, cosechar, triturar, etc.).\n"
-                                f"3. Ofrécele ver categorías generales (Nebulizadoras, Carros, Trituradoras, Tractores).\n"
+                                f"3. Ofrécele ver categorías generales (Cosecha, Fertilización, Transporte, Mantenimiento, Preparación de suelo).\n"
+                                f"4. Importante: Si buscó 'preparacion de suelo' u otro término técnico, explícale qué categorías podrían servirle (ej: Rastras, Arados).\n"
                                 f"Responde amable y proactivo, breve para WhatsApp."
                             )
                             try:
                                 recovery = model.generate_content(prompt_fallback)
                                 result["text"] = recovery.text
                             except:
-                                result["text"] = "🧐 No encontré eso exactamente. ¿Podrías decirme qué labor agrícola necesitas realizar? (ej: fumigar, podar, acarrear). Así busco la mejor máquina para ti."
+                                result["text"] = "🧐 No encontré eso exactamente. ¿Podrías decirme qué labor agrícola necesitas realizar? Así busco la mejor máquina para ti."
 
                     elif fc.name == "mostrar_imagenes_por_nombre":
                         if fr.get("success"):
@@ -319,6 +373,12 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                             result["text"] = f"✅ *Cotización Generada Exitosamente*\n\n📄 Productos:\n• {lista_nombres}\n\n💰 Total Neto: {precio} + IVA"
                         else:
                             result["text"] = "⚠️ Hubo un problema generando la cotización. Asegúrate de que los productos existen o intenta nuevamente."
+                            
+                    elif fc.name == "actualizar_estado_cotizacion":
+                        if fr.get("success"):
+                            result["text"] = fr["mensaje"]
+                        else:
+                            result["text"] = "⚠️ No pude actualizar el estado de la venta. Verifica que tengas una cotización previa."
 
         if not result["text"]:
             result["text"] = "Error procesando. Intenta de nuevo."

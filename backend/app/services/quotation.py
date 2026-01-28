@@ -15,7 +15,7 @@ from reportlab.lib.units import inch, cm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
-from google.cloud import storage
+from google.cloud import storage, firestore
 
 from app.core.config import settings
 
@@ -266,7 +266,8 @@ def save_quotation_to_firestore(
     maquinaria_ids: list,
     maquinaria_nombres: list,
     precio_total: float,
-    pdf_url: str
+    pdf_url: str,
+    estado: str = "CONTACTADO"
 ) -> Optional[str]:
     """
     Guarda la cotización multi-producto en Firestore.
@@ -284,7 +285,7 @@ def save_quotation_to_firestore(
             "maquinarias": maquinaria_nombres,
             "precio_total": precio_total,
             "pdf_url": pdf_url,
-            "estado": "NUEVA",
+            "estado": estado,
             "origen": "WhatsApp",
             "created_at": datetime.now().isoformat()
         })
@@ -295,3 +296,40 @@ def save_quotation_to_firestore(
     except Exception as e:
         logger.error(f"Error guardando cotización: {e}")
         return None
+
+def update_quotation_status(cliente_telefono: str, nuevo_estado: str) -> bool:
+    """
+    Actualiza el estado de la ÚLTIMA cotización activa del cliente.
+    Estados válidos: NEGOCIANDO, VENDIDA, PERDIDA
+    """
+    try:
+        from app.services.firebase import db
+        
+        # Buscar la última cotización de este teléfono
+        # Firestore requiere índice compuesto para where + order_by.
+        # Para evitarlo, traemos todas las de este teléfono y ordenamos en memoria.
+        docs = db.collection("cotizaciones")\
+            .where("cliente_telefono", "==", cliente_telefono)\
+            .stream()
+            
+        all_docs = list(docs)
+        if not all_docs:
+             logger.warning(f"⚠️ No se encontró cotización para {cliente_telefono}")
+             return False
+
+        # Ordenar por created_at descendente (string ISO 8601 ordena bien lexicográficamente)
+        all_docs.sort(key=lambda x: x.to_dict().get("created_at", ""), reverse=True)
+        found_doc = all_docs[0]
+            
+        if found_doc:
+            doc_ref = db.collection("cotizaciones").document(found_doc.id)
+            doc_ref.update({"estado": nuevo_estado})
+            logger.info(f"🔄 Estado actualizado a {nuevo_estado} para cotización {found_doc.id}")
+            return True
+            
+        logger.warning(f"⚠️ No se encontró cotización para actualizar estado a {cliente_telefono}")
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error actualizando estado cotización: {e}")
+        return False
