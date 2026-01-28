@@ -7,11 +7,12 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+import requests
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, cm
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
 from google.cloud import storage
@@ -28,28 +29,15 @@ def generate_quotation_pdf(
     cliente_nombre: str,
     cliente_email: str,
     cliente_telefono: str,
-    maquinaria: dict,
-    precio: Optional[float] = None
+    maquinarias: list[dict],
+    precios: Optional[list[float]] = None
 ) -> Optional[str]:
     """
-    Genera un PDF de cotización y lo sube a Cloud Storage.
-    
-    Args:
-        cliente_nombre: Nombre del cliente
-        cliente_email: Email del cliente
-        cliente_telefono: Teléfono del cliente
-        maquinaria: Datos de la maquinaria a cotizar
-        precio: Precio a cotizar (si None, usa precioReferencia)
-    
-    Returns:
-        URL pública del PDF generado o None si falla
+    Genera un PDF de cotización para múltiples productos.
     """
     try:
         # Generar código único de cotización
         codigo = f"COT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
-        
-        # Usar precio de referencia si no se especifica otro
-        precio_final = precio or maquinaria.get("precioReferencia", 0)
         
         # Crear PDF en memoria
         buffer = io.BytesIO()
@@ -73,7 +61,6 @@ def generate_quotation_pdf(
             textColor=colors.HexColor("#2E7D32"),  # Verde MACI
             spaceAfter=6
         )
-        
         # Estilo subtítulo
         style_subtitulo = ParagraphStyle(
             'Subtitulo',
@@ -82,7 +69,6 @@ def generate_quotation_pdf(
             textColor=colors.HexColor("#FF8C00"),  # Naranja
             fontStyle='italic'
         )
-        
         # Estilo normal
         style_normal = ParagraphStyle(
             'NormalCustom',
@@ -90,33 +76,51 @@ def generate_quotation_pdf(
             fontSize=11,
             spaceAfter=6
         )
-        
         # Estilo producto
         style_producto = ParagraphStyle(
             'Producto',
             parent=styles['Heading2'],
-            fontSize=12,
+            fontSize=14,
             textColor=colors.HexColor("#2E7D32"),
             spaceBefore=12,
             spaceAfter=6
         )
-        
         # Estilo precio
         style_precio = ParagraphStyle(
             'Precio',
             parent=styles['Heading2'],
-            fontSize=14,
+            fontSize=12,
             textColor=colors.HexColor("#2E7D32"),
             alignment=TA_RIGHT
         )
-        
+
         # Construir contenido
         story = []
         
-        # Encabezado
-        story.append(Paragraph("INGENIERÍA AGROINDUSTRIAL", style_empresa))
-        story.append(Paragraph("Torno – Hidráulica – Estructuras – Repuestos", style_subtitulo))
-        story.append(Spacer(1, 0.5*inch))
+        # Encabezado con Logo
+        logo_path = "app/assets/logo.png"
+        try:
+            logo = Image(logo_path, width=2.4*inch, height=0.8*inch, kind='proportional')
+        except Exception:
+            logo = Paragraph("MACI", style_empresa)
+            
+        header_text = [
+            Paragraph("INGENIERÍA AGROINDUSTRIAL", style_empresa),
+            Paragraph("Torno – Hidráulica – Estructuras – Repuestos", style_subtitulo)
+        ]
+        
+        header_table = Table([
+            [logo, header_text]
+        ], colWidths=[2.5*inch, 4.5*inch])
+        
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('ALIGN', (0,0), (0,0), 'LEFT'),
+            ('LEFTPADDING', (1,0), (1,0), 6),
+        ]))
+        
+        story.append(header_table)
+        story.append(Spacer(1, 0.4*inch))
         
         # Fecha
         fecha = datetime.now().strftime("%d de %B de %Y").replace(
@@ -132,118 +136,122 @@ def generate_quotation_pdf(
         )))
         story.append(Spacer(1, 0.3*inch))
         
-        # Datos empresa
+        # Datos empresa y cliente
         story.append(Paragraph("<b>DE</b>     : INGENIERÍA AGROINDUSTRIAL MACI LTDA.", style_normal))
         story.append(Paragraph(f"<b>PARA</b>  : {cliente_nombre}", style_normal))
         story.append(Paragraph(f"<b>MAIL</b>   : {cliente_email}", style_normal))
         story.append(Paragraph(f"<b>FONO</b>  : {cliente_telefono}", style_normal))
         story.append(Spacer(1, 0.3*inch))
         
-        # Introducción
         story.append(Paragraph("De nuestra mayor consideración:", style_normal))
-        story.append(Spacer(1, 0.2*inch))
-        story.append(Paragraph(
-            "Por la presente, tenga a bien recibir nuestra cotización, según vuestra solicitud;",
-            style_normal
-        ))
+        story.append(Paragraph("Por la presente, tenga a bien recibir nuestra cotización, según vuestra solicitud;", style_normal))
         story.append(Spacer(1, 0.3*inch))
         
-        # Producto cotizado
-        nombre_maquinaria = maquinaria.get("nombre", "Producto")
-        story.append(Paragraph(f"❖ {nombre_maquinaria.upper()}", style_producto))
-        story.append(Spacer(1, 0.1*inch))
+        total_neto = 0
         
-        # Especificaciones técnicas
-        especificaciones = maquinaria.get("especificacionesTecnicas", "")
-        if especificaciones:
-            # Dividir por líneas y formatear como lista
-            lineas = especificaciones.split("\n")
-            for linea in lineas:
-                if linea.strip():
-                    story.append(Paragraph(f"∴ {linea.strip()}", style_normal))
-        
-        # Descripción
-        descripcion = maquinaria.get("descripcion", "")
-        if descripcion:
+        # ITERAR PRODUCTOS
+        for idx, maq in enumerate(maquinarias):
+            precio_unitario = maq.get("precioReferencia", 0)
+            if precios and len(precios) > idx:
+                precio_unitario = precios[idx]
+            
+            total_neto += precio_unitario
+            
+            # Nombre Producto
+            nombre_maquinaria = maq.get("nombre", f"Producto {idx+1}")
+            story.append(Paragraph(f"Item {idx+1}: {nombre_maquinaria.upper()}", style_producto))
+            story.append(Spacer(1, 0.1*inch))
+            
+            # Descripción
+            descripcion = maq.get("descripcion", "")
+            if descripcion:
+                story.append(Paragraph(descripcion, style_normal))
+                story.append(Spacer(1, 0.1*inch))
+                
+            # Imagen
+            imagenes = maq.get("imagenes", [])
+            if imagenes:
+                img_url = imagenes[0]
+                try:
+                    response = requests.get(img_url, timeout=10)
+                    if response.status_code == 200:
+                        img_buffer = io.BytesIO(response.content)
+                        prod_img = Image(img_buffer, width=4*inch, height=3*inch, kind='proportional')
+                        story.append(prod_img)
+                        story.append(Spacer(1, 0.1*inch))
+                except Exception:
+                    pass
+
+            # Spec
+            specs = maq.get("especificacionesTecnicas", "")
+            if specs:
+                for linea in specs.splitlines():
+                    if linea.strip():
+                        story.append(Paragraph(f"∴ {linea.strip()}", style_normal))
+            
+            # Precio individual
+            p_fmt = f"$ {precio_unitario:,.0f}".replace(",", ".")
+            story.append(Paragraph(f"Valor Neto: {p_fmt}", ParagraphStyle('P', parent=styles['Normal'], alignment=TA_RIGHT)))
+            
+            story.append(HRFlowable(width="100%", thickness=0.5, color=colors.lightgrey))
             story.append(Spacer(1, 0.2*inch))
-            story.append(Paragraph(descripcion, style_normal))
+
+        # TOTALES
+        total_formateado = f"$ {total_neto:,.0f}".replace(",", ".")
+        iva = total_neto * 0.19
+        total_iva = total_neto + iva
         
+        t_neto = f"$ {total_neto:,.0f}".replace(",", ".")
+        t_iva = f"$ {iva:,.0f}".replace(",", ".")
+        t_total = f"$ {total_iva:,.0f}".replace(",", ".")
+        
+        totales_data = [
+            ["Subtotal Neto", t_neto],
+            ["IVA (19%)", t_iva],
+            ["TOTAL", t_total]
+        ]
+        
+        t_tabla = Table(totales_data, colWidths=[4*inch, 2*inch])
+        t_tabla.setStyle(TableStyle([
+            ('ALIGN', (1,0), (1,-1), 'RIGHT'),
+            ('FONTNAME', (0,2), (1,2), 'Helvetica-Bold'),
+            ('LINEABOVE', (0,2), (1,2), 1, colors.black),
+        ]))
+        story.append(Spacer(1, 0.2*inch))
+        story.append(t_tabla)
         story.append(Spacer(1, 0.4*inch))
         
-        # Precio
-        precio_formateado = f"$ {precio_final:,.0f}".replace(",", ".")
-        
-        precio_table = Table([
-            [Paragraph("<b>Precio Neto</b>", style_normal), 
-             Paragraph(f"<b>{precio_formateado} más IVA</b>", style_precio)]
-        ], colWidths=[3*inch, 3*inch])
-        
-        precio_table.setStyle(TableStyle([
-            ('ALIGN', (0, 0), (0, 0), 'LEFT'),
-            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ]))
-        
-        story.append(precio_table)
-        story.append(Spacer(1, 0.5*inch))
-        
-        # Cierre
-        story.append(Paragraph(
-            "Esperando dar una satisfactoria respuesta a vuestra necesidad y quedando a sus órdenes,",
-            style_normal
-        ))
+        # Cierre y Firma (igual que antes)
+        story.append(Paragraph("Esperando dar una satisfactoria respuesta...", style_normal))
         story.append(Spacer(1, 0.3*inch))
         story.append(Paragraph("Atte.", style_normal))
-        story.append(Spacer(1, 0.5*inch))
-        
-        # Firma (placeholder sin logo)
-        story.append(Paragraph("<b>Ingeniería Agroindustrial Maci Ltda.</b>", ParagraphStyle(
-            'Firma', parent=styles['Normal'], alignment=TA_CENTER, fontSize=11
-        )))
-        story.append(Spacer(1, 0.5*inch))
-        
-        # Línea separadora
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.gray))
         story.append(Spacer(1, 0.1*inch))
+        story.append(Paragraph("<b>Berardo Cortez López</b>", style_normal))
+        story.append(Paragraph("Gerente General", style_normal))
+        story.append(Paragraph("<b>Ingeniería Agroindustrial Maci Ltda.</b>", style_normal))
+        story.append(Spacer(1, 0.5*inch))
         
-        # Pie de página
-        style_footer = ParagraphStyle(
-            'Footer', parent=styles['Normal'], alignment=TA_CENTER, fontSize=9, textColor=colors.gray
-        )
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.gray))
+        
+        # Footer
+        style_footer = ParagraphStyle('Footer', parent=styles['Normal'], alignment=TA_CENTER, fontSize=9, textColor=colors.gray)
         story.append(Paragraph("Fono: 34 - 251 76 89   Celular: 09 – 7648 2333", style_footer))
         story.append(Paragraph("www.maci.cl  -  ventas@maci.cl", style_footer))
-        story.append(Spacer(1, 0.2*inch))
         
-        # Nota
-        style_nota = ParagraphStyle(
-            'Nota', parent=styles['Normal'], fontSize=9, textColor=colors.gray
-        )
-        story.append(Paragraph(
-            "<b>Nota:</b> La cotización no considera despacho del equipo, imágenes referenciales. "
-            "Cotización válida durante 10 días hábiles.",
-            style_nota
-        ))
-        
-        # Generar PDF
+        # Build
         doc.build(story)
         
-        # Subir a Cloud Storage
+        # Upload
         buffer.seek(0)
         pdf_filename = f"cotizaciones/{codigo}.pdf"
-        
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
         blob = bucket.blob(pdf_filename)
-        
         blob.upload_from_file(buffer, content_type="application/pdf")
-        
-        # Hacer público
         blob.make_public()
         
-        public_url = blob.public_url
-        logger.info(f"📄 Cotización generada: {codigo} -> {public_url}")
-        
-        return public_url
+        logger.info(f"📄 Cotización generada: {codigo}")
+        return blob.public_url
         
     except Exception as e:
         logger.error(f"Error generando cotización PDF: {e}", exc_info=True)
@@ -255,16 +263,13 @@ def save_quotation_to_firestore(
     cliente_nombre: str,
     cliente_email: str,
     cliente_telefono: str,
-    maquinaria_id: str,
-    maquinaria_nombre: str,
-    precio: float,
+    maquinaria_ids: list,
+    maquinaria_nombres: list,
+    precio_total: float,
     pdf_url: str
 ) -> Optional[str]:
     """
-    Guarda la cotización en Firestore para seguimiento.
-    
-    Returns:
-        ID del documento creado o None
+    Guarda la cotización multi-producto en Firestore.
     """
     try:
         from app.services.firebase import db
@@ -275,9 +280,9 @@ def save_quotation_to_firestore(
             "cliente_nombre": cliente_nombre,
             "cliente_email": cliente_email,
             "cliente_telefono": cliente_telefono,
-            "maquinaria_id": maquinaria_id,
-            "maquinaria": maquinaria_nombre,
-            "precio_cotizado": precio,
+            "maquinaria_ids": maquinaria_ids,
+            "maquinarias": maquinaria_nombres,
+            "precio_total": precio_total,
             "pdf_url": pdf_url,
             "estado": "NUEVA",
             "origen": "WhatsApp",

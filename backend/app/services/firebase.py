@@ -40,7 +40,8 @@ def save_message(phone: str, role: str, content: str) -> None:
         # Ahora guardar el mensaje en la subcolección
         chat_ref.collection("messages").add({
             "role": role,
-            "parts": [{"text": content}],
+            "content": content,  # Guardar contenido plano para fácil lectura
+            "parts": [{"text": content}],  # Estructura compatible con Vertex AI
             "timestamp": now.isoformat()
         })
         
@@ -64,9 +65,18 @@ def get_chat_history(phone: str, limit: int = 50) -> list:
         
         for doc in docs:
             data = doc.to_dict()
+            content = data.get("content")
+            
+            # Fallback para mensajes antiguos guardados solo en parts
+            if not content and data.get("parts"):
+                try:
+                    content = data["parts"][0]["text"]
+                except (IndexError, KeyError):
+                    content = ""
+            
             messages.append({
                 "role": data.get("role"),
-                "content": data.get("content")
+                "content": content
             })
         
         return list(reversed(messages))

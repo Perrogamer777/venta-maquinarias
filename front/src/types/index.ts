@@ -21,7 +21,8 @@ export interface Conversacion {
 export interface Cotizacion {
     id?: string;
     codigo_cotizacion: string;
-    maquinaria: string;
+    maquinaria?: string;
+    maquinarias?: string[]; // Para cotización múltiple
     maquinaria_id?: string;
     cliente_nombre: string;
     cliente_empresa?: string;
@@ -33,6 +34,7 @@ export interface Cotizacion {
     fecha_seguimiento?: string;
     presupuesto_cliente?: number;
     precio_cotizado?: number;
+    precio_total?: number; // Para cotización múltiple
     notas?: string;
 }
 

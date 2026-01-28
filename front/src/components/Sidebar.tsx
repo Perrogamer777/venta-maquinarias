@@ -58,7 +58,7 @@ export default function Sidebar() {
     ];
 
     const managementItems = [
-        { href: getHref('/flujo'), icon: Workflow, label: 'Flujo Comercial' },
+        // { href: getHref('/flujo'), icon: Workflow, label: 'Flujo Comercial' },
         { href: getHref('/inventario'), icon: Truck, label: nomenclature.units.plural },
     ];
 

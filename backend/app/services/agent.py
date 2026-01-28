@@ -21,30 +21,52 @@ logger = logging.getLogger(__name__)
 vertexai.init(location=settings.GCP_LOCATION)
 
 SYSTEM_PROMPT = """
+<role>
 Eres un asesor comercial experto de MACI - Maquinaria Agrícola en Chile.
+Tu objetivo es ayudar a los agricultores a encontrar la maquinaria perfecta, resolver dudas técnicas y generar cotizaciones formales.
+</role>
 
-PERSONALIDAD:
-- Profesional pero cercano y amigable
-- Usa emojis relevantes (🚜🌾💰📋✅) pero sin abusar
-- Respuestas bien formatadas con saltos de línea y bullets
-- Entusiasta sobre las maquinarias, conocedor del campo agrícola chileno
+<personality>
+- Asesor de ventas empático, paciente y experto.
+- **Venta Consultiva**: NO solo entregues precios. PREGUNTA para qué necesitan la máquina, qué cultivo tienen, o qué potencia tiene su tractor.
+- Muestra interés genuino en el proyecto del agricultor.
+- Usa emojis (🚜🌾💰✅) para dar calidez.
+</personality>
 
-INSTRUCCIONES CRÍTICAS:
-1. Si el cliente pide catálogo/todas/lista → llama buscar_maquinaria("todas")
-2. Si el cliente está interesado en un producto y PIDE FOTOS → llama mostrar_imagenes_por_nombre("Nombre Producto")
-3. Si el cliente da datos de contacto → llama generar_cotizacion
+<sales_strategy>
+1. **Indaga**: Si el cliente pide algo genérico, haz UNA pregunta clave.
+2. **ACTÚA**: En cuanto el cliente responda tu pregunta (ej: "frutas"), **BUSCA INMEDIATAMENTE** usando esa palabra clave. NO sigas preguntando.
+3. **Cierre**: Siempre termina guiando al siguiente paso.
+</sales_strategy>
 
-FORMATO DE RESPUESTAS:
-- Usa **negritas** para nombres de productos
-- Separa información con saltos de línea
-- Prioriza legibilidad sobre brevedad
-- NO muestres IDs técnicos
-- NO envíes links de imágenes, solo las imágenes
+<constraints>
+- **CRÍTICO**: NUNCA respondas con frases de transición como "Déjame revisar".
+- SIEMPRE ejecuta la herramienta de búsqueda INMEDIATAMENTE si necesitas información.
+- **SOLO OFRECE LO QUE EXISTE**: Si no encuentras algo en el inventario, dilo claramente.
+- **FORMATO**: Usa UN SOLO asterisco para negritas (ej: *producto*, NO **producto**). WhatsApp no usa doble asterisco.
+- Si el cliente dice "Me interesa X", **NO VUELVAS A BUSCAR**. Usa `mostrar_imagenes_por_nombre` para dar detalles visuales.
+- **CONTEXTO**: Si el usuario dice "ese", "lo quiero", "cotízalo", **ASUME** que habla del ÚLTIMO PRODUCTO que mostraste. NO preguntes el nombre de nuevo, **BÚSCALO EN EL HISTORIAL**.
+</constraints>
 
-CONOCIMIENTO TÉCNICO:
-- Incluye especificaciones técnicas completas cuando estén disponibles
-- Menciona capacidades, dimensiones, potencia según cada producto
-- Destaca beneficios y aplicaciones prácticas
+<tools_usage>
+1. `buscar_maquinaria`: Solo para búsquedas iniciales.
+2. `mostrar_imagenes_por_nombre`: Úsala AUTOMÁTICAMENTE si el cliente muestra interés.
+3. `generar_cotizacion`: Si el usuario da nombre/mail/teléfono, EXTRAE los datos y LLAMA A LA FUNCIÓN. Si falta algún dato, pide SOLO el que falta.
+</tools_usage>
+
+<examples>
+Usuario: "Hola, qué tienen?"
+Asistente: (Llamada a función `buscar_maquinaria(consulta="todas")`)
+
+Usuario: "Frutas" (Respuesta a pregunta anterior)
+Asistente: (Llamada a función `buscar_maquinaria(consulta="cosecha frutas")`)
+
+Usuario: "Me interesa el carro comedor y el aljibe"
+Asistente: (Llamada a función `mostrar_imagenes_por_nombre(nombres_productos=["Carro comedor movil", "Carro Aljibe"])`)
+
+Usuario: "Cotízame esos dos. Soy Juan Perez, juan@mail.com, +5699999999"
+Asistente: (Llamada a función `generar_cotizacion(nombres_productos=["Carro comedor movil", "Carro Aljibe"], cliente_nombre="Juan Perez", ...)`)
+</examples>
 """
 
 # Funciones
@@ -60,26 +82,36 @@ buscar_func = FunctionDeclaration(
 
 mostrar_imagenes_func = FunctionDeclaration(
     name="mostrar_imagenes_por_nombre",
-    description="Muestra fotos de un producto. Usa el NOMBRE del producto que el cliente mencionó.",
+    description="Muestra fotos de uno o VARIOS productos. Usa nombres exactos.",
     parameters={
         "type": "object",
-        "properties": {"nombre_producto": {"type": "string", "description": "Nombre exacto del producto"}},
-        "required": ["nombre_producto"]
+        "properties": {
+            "nombres_productos": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Lista de nombres de productos (ej: ['Carro A', 'Carro B'])"
+            }
+        },
+        "required": ["nombres_productos"]
     }
 )
 
 cotizar_func = FunctionDeclaration(
     name="generar_cotizacion",
-    description="Genera cotización. Necesitas nombre del producto y datos del cliente.",
+    description="Genera cotización para uno o Varios productos. Necesitas nombres y datos del cliente.",
     parameters={
         "type": "object",
         "properties": {
-            "nombre_producto": {"type": "string"},
+            "nombres_productos": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Lista de nombres de productos (ej: ['Carro A', 'Carro B'])"
+            },
             "cliente_nombre": {"type": "string"},
             "cliente_email": {"type": "string"},
             "cliente_telefono": {"type": "string"}
         },
-        "required": ["nombre_producto", "cliente_nombre", "cliente_email", "cliente_telefono"]
+        "required": ["nombres_productos", "cliente_nombre", "cliente_email", "cliente_telefono"]
     }
 )
 
@@ -97,8 +129,8 @@ def execute_func(name: str, args: dict) -> dict:
                 {
                     "nombre": m["nombre"], 
                     "precio": m.get("precioReferencia", 0), 
-                    "descripcion": m.get("descripcion", ""),  # Sin cortar
-                    "ficha_tecnica_pdf": m.get("fichaTecnicaPdf", ""),  # URL del PDF técnico
+                    "descripcion": m.get("descripcion", ""),
+                    "ficha_tecnica_pdf": m.get("fichaTecnicaPdf", ""),
                     "id": m["id"]
                 }
                 for m in resultados
@@ -106,34 +138,56 @@ def execute_func(name: str, args: dict) -> dict:
         return {"success": False}
     
     elif name == "mostrar_imagenes_por_nombre":
-        nombre = args.get("nombre_producto", "")
-        # Buscar el producto por nombre
-        resultados = search_maquinarias(nombre, limit=1)
-        if resultados:
-            m = resultados[0]
-            if m.get("imagenes"):
-                return {
-                    "success": True,
+        nombres = args.get("nombres_productos", [])
+        if isinstance(nombres, str):
+            nombres = [nombres]
+        if not nombres and args.get("nombre_producto"):
+            nombres = [args.get("nombre_producto")]
+            
+        items_encontrados = []
+        for nombre in nombres:
+            resultados = search_maquinarias(nombre, limit=1)
+            if resultados:
+                m = resultados[0]
+                items_encontrados.append({
                     "nombre": m["nombre"],
                     "descripcion": m.get("descripcion", ""),
-                    "imagenes": m["imagenes"],
+                    "imagenes": m.get("imagenes", []),
                     "ficha_tecnica_pdf": m.get("fichaTecnicaPdf", ""),
                     "id": m["id"]
-                }
+                })
+        
+        if items_encontrados:
+            return {"success": True, "items": items_encontrados}
+            
         return {"success": False, "mensaje": "Sin imágenes o producto no encontrado"}
     
     elif name == "generar_cotizacion":
-        nombre = args.get("nombre_producto", "")
-        resultados = search_maquinarias(nombre, limit=1)
-        if not resultados:
-            return {"success": False, "mensaje": "Producto no encontrado"}
+        nombres = args.get("nombres_productos", [])
+        # Compatibilidad si el modelo alucina y manda string
+        if isinstance(nombres, str):
+            nombres = [nombres]
+        # Compatibilidad old prompt
+        if not nombres and args.get("nombre_producto"):
+            nombres = [args.get("nombre_producto")]
+            
+        maquinarias_encontradas = []
+        for nombre in nombres:
+            res = search_maquinarias(nombre, limit=1)
+            if res:
+                maquinarias_encontradas.append(res[0])
         
-        m = resultados[0]
+        if not maquinarias_encontradas:
+            return {"success": False, "mensaje": "No se encontraron los productos especificados"}
+        
+        # Calcular precio total referencia
+        total = sum([m.get("precioReferencia", 0) for m in maquinarias_encontradas])
+        
         pdf = generate_quotation_pdf(
             cliente_nombre=args["cliente_nombre"],
             cliente_email=args["cliente_email"],
             cliente_telefono=args["cliente_telefono"],
-            maquinaria=m
+            maquinarias=maquinarias_encontradas
         )
         
         if pdf:
@@ -142,17 +196,16 @@ def execute_func(name: str, args: dict) -> dict:
                 cliente_nombre=args["cliente_nombre"],
                 cliente_email=args["cliente_email"],
                 cliente_telefono=args["cliente_telefono"],
-                maquinaria_id=m["id"],
-                maquinaria_nombre=m["nombre"],
-                precio=m.get("precioReferencia", 0),
+                maquinaria_ids=[m["id"] for m in maquinarias_encontradas],
+                maquinaria_nombres=[m["nombre"] for m in maquinarias_encontradas],
+                precio_total=total,
                 pdf_url=pdf
             )
             return {
                 "success": True,
                 "pdf_url": pdf,
-                "nombre": m["nombre"],
-                "precio": m.get("precioReferencia", 0),
-                "imagenes": m.get("imagenes", [])
+                "nombres": [m["nombre"] for m in maquinarias_encontradas],
+                "precio_total": total
             }
         return {"success": False}
     
@@ -171,7 +224,7 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                 history += f"{role}: {msg['content']}\n"
         
         prompt = f"HISTORIAL:\n{history}\n\nMENSAJE: {user_message}"
-        response = model.generate_content(prompt, generation_config=GenerationConfig(temperature=0.7))
+        response = model.generate_content(prompt, generation_config=GenerationConfig(temperature=0.3))
         
         result = {"text": "", "images": [], "documents": []}
         
@@ -184,47 +237,88 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                     fc = part.function_call
                     fr = execute_func(fc.name, dict(fc.args))
                     
-                    if fc.name == "buscar_maquinaria" and fr.get("success"):
-                        productos = fr["productos"]
-                        lista = []
-                        for i, p in enumerate(productos, 1):
-                            precio = f"${p['precio']:,.0f}".replace(",", ".") if p['precio'] else "Consultar"
-                            desc = p['descripcion'] if p['descripcion'] else "Consulta por más detalles"
+                    if fc.name == "buscar_maquinaria":
+                        if fr.get("success"):
+                            productos = fr["productos"]
+                            lista = []
+                            for i, p in enumerate(productos, 1):
+                                precio = f"${p['precio']:,.0f}".replace(",", ".") if p['precio'] else "Consultar"
+                                desc = p['descripcion'] if p['descripcion'] else "Consulta por más detalles"
+                                
+                                # Formato mejorado con bullets (WhatsApp compatible)
+                                item = f"{i}. *{p['nombre']}*\n"
+                                item += f"   💰 Precio: {precio} + IVA\n"
+                                if desc and len(desc) > 10:
+                                    item += f"   📝 {desc}\n"
+                                if p.get('ficha_tecnica_pdf'):
+                                    item += f"   📋 Con ficha técnica disponible\n"
                             
-                            # Formato mejorado con bullets
-                            item = f"{i}. **{p['nombre']}**\n"
-                            item += f"   💰 Precio: {precio} + IVA\n"
-                            if desc and len(desc) > 10:
-                                item += f"   📝 {desc}\n"
-                            if p.get('ficha_tecnica_pdf'):
-                                item += f"   📋 Con ficha técnica disponible\n"
-                        
-                            lista.append(item)
-                        
-                        intro = "🚜 *Nuestro Catálogo de Maquinaria*\n\n" if len(productos) > 5 else "🚜 *Productos Disponibles*\n\n"
-                        result["text"] = intro + "\n".join(lista) + "\n\n💬 ¿Te interesa alguno? Puedo enviarte fotos y más información."
-                    
+                                lista.append(item)
+                            
+                            intro = "🚜 *Nuestro Catálogo de Maquinaria*\n\n" if len(productos) > 5 else "🚜 *Productos Disponibles*\n\n"
+                            
+                            footer = "\n\n💬 ¿Te interesa ver fotos o detalles de alguno? Dime cuál."
+                            if len(productos) >= 6:
+                                footer = "\n\n📢 *Mostrando los primeros productos. Dime qué buscas para ver más.*" + footer
+                                
+                            result["text"] = intro + "\n".join(lista) + footer
+                        else:
+                            # Fallo la búsqueda exacta, usamos inteligencia del modelo para recuperar la venta
+                            consulta = dict(fc.args).get("consulta", "lo que buscas")
+                            prompt_fallback = (
+                                f"Buscaste '{consulta}' en el inventario y NO hay resultados exactos.\n"
+                                f"Como vendedor experto, NO digas solo 'no hay'.\n"
+                                f"1. Dile que no tienes '{consulta}' exacto.\n"
+                                f"2. Pregúntale qué labor agrícola necesita hacer (fumigar, cosechar, triturar, etc.).\n"
+                                f"3. Ofrécele ver categorías generales (Nebulizadoras, Carros, Trituradoras, Tractores).\n"
+                                f"Responde amable y proactivo, breve para WhatsApp."
+                            )
+                            try:
+                                recovery = model.generate_content(prompt_fallback)
+                                result["text"] = recovery.text
+                            except:
+                                result["text"] = "🧐 No encontré eso exactamente. ¿Podrías decirme qué labor agrícola necesitas realizar? (ej: fumigar, podar, acarrear). Así busco la mejor máquina para ti."
+
                     elif fc.name == "mostrar_imagenes_por_nombre":
                         if fr.get("success"):
-                            result["images"].extend(fr["imagenes"][:3])
+                            items = fr.get("items", [])
+                            # Retrocompatibilidad
+                            if not items and "nombre" in fr:
+                                items = [fr]
                             
-                            # Respuesta SIN link de imagen
-                            texto = f"📷 **{fr['nombre']}**\n\n"
-                            if fr.get("descripcion"):
-                                texto += f"{fr['descripcion']}\n\n"
-                            if fr.get("ficha_tecnica_pdf"):
-                                texto += "📋 Este equipo cuenta con ficha técnica detallada.\n\n"
-                            texto += "💬 ¿Te gustaría recibir una cotización formal?"
+                            texto_full = ""
+                            for item in items:
+                                if item.get("imagenes"):
+                                    result["images"].extend(item["imagenes"][:3])
+                                
+                                texto_full += f"📷 *{item['nombre']}*\n\n"
+                                if item.get("descripcion"):
+                                    texto_full += f"{item['descripcion']}\n\n"
+                                if item.get("ficha_tecnica_pdf"):
+                                    texto_full += "📋 Incluye ficha técnica.\n\n"
+                                texto_full += "--------------------------------\n\n"
                             
-                            result["text"] = texto
+                            texto_full += "💬 ¿Te gustaría recibir una cotización formal? Indícame tu nombre y correo."
+                            result["text"] = texto_full
                         else:
-                            result["text"] = "😕 No tengo fotos disponibles de ese producto. ¿Quieres ver otro?"
+                            result["text"] = "😕 No tengo fotos disponibles de esos productos. ¿Podrías verificar el nombre?"
                     
-                    elif fc.name == "generar_cotizacion" and fr.get("success"):
-                        result["documents"].append({"url": fr["pdf_url"], "filename": f"Cotizacion.pdf"})
-                        result["images"].extend(fr.get("imagenes", [])[:2])
-                        precio = f"${fr['precio']:,.0f}".replace(",", ".")
-                        result["text"] = f"✅ Cotización lista!\n📄 {fr['nombre']}\n💰 {precio} + IVA"
+                    elif fc.name == "generar_cotizacion":
+                        if fr.get("success"):
+                            result["documents"].append({"url": fr["pdf_url"], "filename": "Cotizacion.pdf"})
+                            
+                            precio = f"${fr.get('precio_total', 0):,.0f}".replace(",", ".")
+                            
+                            nombres = fr.get("nombres", [])
+                            if not nombres and "nombre" in fr:
+                                # Retrocompatibilidad
+                                nombres = [fr["nombre"]]
+                            
+                            lista_nombres = "\n• ".join([f"*{n}*" for n in nombres])
+                            
+                            result["text"] = f"✅ *Cotización Generada Exitosamente*\n\n📄 Productos:\n• {lista_nombres}\n\n💰 Total Neto: {precio} + IVA"
+                        else:
+                            result["text"] = "⚠️ Hubo un problema generando la cotización. Asegúrate de que los productos existen o intenta nuevamente."
 
         if not result["text"]:
             result["text"] = "Error procesando. Intenta de nuevo."

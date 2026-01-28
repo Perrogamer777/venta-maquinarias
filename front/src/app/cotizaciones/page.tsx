@@ -144,6 +144,7 @@ export default function CotizacionesPage() {
             c.cliente_nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.cliente_empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.maquinaria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            c.maquinarias?.some(m => m.toLowerCase().includes(searchTerm.toLowerCase())) ||
             c.codigo_cotizacion?.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesEstado = !filterEstado || c.estado === filterEstado;
         return matchesSearch && matchesEstado;
@@ -288,8 +289,10 @@ export default function CotizacionesPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                        {cotizacion.maquinaria}
+                                                    <span className="text-sm text-gray-700 dark:text-gray-300 block max-w-xs truncate" title={cotizacion.maquinarias?.join(", ") || cotizacion.maquinaria}>
+                                                        {cotizacion.maquinarias
+                                                            ? cotizacion.maquinarias.join(", ")
+                                                            : cotizacion.maquinaria}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
@@ -298,9 +301,9 @@ export default function CotizacionesPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {cotizacion.precio_cotizado ? (
+                                                    {(cotizacion.precio_total || cotizacion.precio_cotizado) ? (
                                                         <span className="font-medium text-gray-900 dark:text-white">
-                                                            ${cotizacion.precio_cotizado.toLocaleString('es-CL')}
+                                                            ${(cotizacion.precio_total || cotizacion.precio_cotizado || 0).toLocaleString('es-CL')}
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-400 text-sm">-</span>
@@ -545,8 +548,14 @@ export default function CotizacionesPage() {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Maquinaria</p>
-                                        <p className="font-medium text-gray-900 dark:text-white">{selectedCotizacion.maquinaria}</p>
+                                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Maquinaria(s)</p>
+                                        <p className="font-medium text-gray-900 dark:text-white">
+                                            {selectedCotizacion.maquinarias
+                                                ? selectedCotizacion.maquinarias.map((m, i) => (
+                                                    <span key={i} className="block">• {m}</span>
+                                                ))
+                                                : selectedCotizacion.maquinaria}
+                                        </p>
                                     </div>
 
                                     {selectedCotizacion.cliente_empresa && (
@@ -578,11 +587,11 @@ export default function CotizacionesPage() {
                                                 </p>
                                             </div>
                                         ) : null}
-                                        {selectedCotizacion.precio_cotizado ? (
+                                        {(selectedCotizacion.precio_total || selectedCotizacion.precio_cotizado) ? (
                                             <div>
                                                 <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Precio Cotizado</p>
                                                 <p className="text-green-600 dark:text-green-400 font-bold text-lg">
-                                                    ${selectedCotizacion.precio_cotizado.toLocaleString('es-CL')}
+                                                    ${(selectedCotizacion.precio_total || selectedCotizacion.precio_cotizado || 0).toLocaleString('es-CL')}
                                                 </p>
                                             </div>
                                         ) : null}
