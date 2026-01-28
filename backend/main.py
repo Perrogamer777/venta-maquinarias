@@ -181,10 +181,6 @@ async def receive_webhook(request: Request):
         return {"status": "error", "message": str(e)}
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
-
 @app.post("/api/upload-image")
 async def upload_image_endpoint(request: Request):
     """Sube imagen a Cloud Storage"""
@@ -223,3 +219,37 @@ async def upload_image_endpoint(request: Request):
     except Exception as e:
         logger.error(f"❌ Upload error: {e}")
         return {"success": False, "error": str(e)}
+
+
+@app.post("/api/send-whatsapp-message")
+async def send_whatsapp_message_endpoint(request: Request):
+    """Envía mensaje de WhatsApp desde el dashboard"""
+    try:
+        data = await request.json()
+        phone = data.get("phone")
+        message = data.get("message")
+        
+        if not phone or not message:
+            return {"success": False, "error": "Phone and message required"}
+        
+        # Enviar mensaje
+        from app.services.whatsapp import send_message
+        from app.services.firebase import save_message
+        
+        success = send_message(phone, message)
+        
+        if success:
+            # Guardar en Firestore
+            save_message(phone, "assistant", message)
+            return {"success": True, "message": "Mensaje enviado"}
+        else:
+            return {"success": False, "error": "Failed to send"}
+    
+    except Exception as e:
+        logger.error(f"❌ Error endpoint send: {e}")
+        return {"success": False, "error": str(e)}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8080)

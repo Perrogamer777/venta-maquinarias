@@ -6,6 +6,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.webhook import router as webhook_router
+from app.api.upload import router as upload_router
+from app.api.messages import router as messages_router
 
 # Configurar logging
 logging.basicConfig(
@@ -33,6 +35,8 @@ app.add_middleware(
 
 # Incluir rutas
 app.include_router(webhook_router, tags=["webhook"])
+app.include_router(upload_router, prefix="/api", tags=["upload"])
+app.include_router(messages_router, prefix="/api", tags=["messages"])
 
 
 @app.get("/")

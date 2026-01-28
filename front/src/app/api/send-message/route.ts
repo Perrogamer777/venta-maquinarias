@@ -5,10 +5,12 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { phone, message } = body;
 
-        // Hacer la petición al chatbot desde el servidor (sin CORS)
-        const chatbotUrl = 'https://reservas-whatsapp-918499479162.us-central1.run.app/api/send-message';
+        // Llamar al backend correcto
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://venta-maquinarias-backend-925532912523.us-central1.run.app';
 
-        const response = await fetch(chatbotUrl, {
+        console.log('🚀 Sending message to backend:', `${backendUrl}/api/send-whatsapp-message`);
+
+        const response = await fetch(`${backendUrl}/api/send-whatsapp-message`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -18,6 +20,7 @@ export async function POST(request: NextRequest) {
 
         if (!response.ok) {
             const error = await response.text();
+            console.error('❌ Backend error:', error);
             return NextResponse.json(
                 { error: 'Error al enviar mensaje', details: error },
                 { status: response.status }
