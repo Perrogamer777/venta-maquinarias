@@ -241,9 +241,17 @@ def generate_quotation_pdf(
         # Build
         doc.build(story)
         
+        # Generar nombre del archivo con formato: Cotizacion{Maquina}{Fecha}
+        fecha = datetime.now().strftime('%Y%m%d')
+        # Usar el nombre de la primera maquinaria (o "Multiple" si hay varias)
+        nombre_maquina = maquinarias[0].get('nombre', 'Producto').replace(' ', '_') if len(maquinarias) == 1 else 'Multiple'
+        # Limpiar caracteres especiales del nombre
+        nombre_maquina = ''.join(c for c in nombre_maquina if c.isalnum() or c == '_')[:30]  # Limitar a 30 chars
+        
+        pdf_filename = f"cotizaciones/Cotizacion{nombre_maquina}{fecha}_{codigo}.pdf"
+        
         # Upload
         buffer.seek(0)
-        pdf_filename = f"cotizaciones/{codigo}.pdf"
         storage_client = storage.Client()
         bucket = storage_client.bucket(BUCKET_NAME)
         blob = bucket.blob(pdf_filename)
