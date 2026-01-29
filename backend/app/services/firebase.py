@@ -93,3 +93,38 @@ def get_chat_history_firestore(phone: str, limit: int = 50) -> list:
     except Exception as e:
         logger.error(f"Error obteniendo historial: {e}")
         return []
+
+
+def schedule_meeting(phone: str, client_email: str, meeting_time: str, meeting_type: str = "videollamada") -> bool:
+    """
+    Agenda una reunión con una persona real.
+    
+    Args:
+        phone: Teléfono del cliente (WhatsApp)
+        client_email: Email del cliente
+        meeting_time: Horario preferido para la reunión (ej: "mañana 3pm", "viernes 10am")
+        meeting_type: Tipo de reunión ("videollamada" o "llamada telefónica")
+    """
+    try:
+        from datetime import datetime
+        
+        meeting_ref = db.collection("meetings").document()
+        
+        meeting_data = {
+            "phone": phone,
+            "email": client_email,
+            "preferred_time": meeting_time,
+            "type": meeting_type,
+            "status": "pendiente",  # pendiente, confirmada, completada, cancelada
+            "created_at": datetime.utcnow(),
+            "notes": ""
+        }
+        
+        meeting_ref.set(meeting_data)
+        
+        logger.info(f"📅 Reunión agendada: {phone} - {meeting_time} ({meeting_type})")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error agendando reunión: {e}")
+        return False
