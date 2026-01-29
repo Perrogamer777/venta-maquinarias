@@ -8,7 +8,17 @@
             "PUT",
             "POST",
             "DELETE",
-            "HEAD"
+            "HEAD",
+            "OPTIONS"
+        ],
+        "responseHeader": [
+            "Content-Type",
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Methods",
+            "Access-Control-Allow-Headers",
+            "Authorization",
+            "X-Requested-With",
+            "x-goog-resumable"
         ],
         "maxAgeSeconds": 3600
     }

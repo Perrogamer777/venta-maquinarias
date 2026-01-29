@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
 
         // Get backend URL from environment or use default
-        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://reservas-whatsapp-918499479162.us-central1.run.app';
+        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://venta-maquinarias-backend-925532912523.us-central1.run.app';
 
         if (!backendUrl) {
             // If no backend URL configured, return a mock response for now

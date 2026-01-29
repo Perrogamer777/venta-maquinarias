@@ -14,7 +14,6 @@ export function NomenclatureConfig() {
     // Mock update function
     const updateCompanySettings = async (data: any) => {
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log("Guardando configuración (mock):", data);
     };
 
     // const { nomenclature, businessType, updateCompanySettings } = useConfig();

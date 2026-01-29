@@ -5,6 +5,7 @@ Integra Webhook de Meta, Transcripción de Audio y Lógica de Agente.
 import os
 import logging
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import vertexai
 from vertexai.generative_models import GenerativeModel, Part
@@ -17,6 +18,10 @@ from app.services.whatsapp import send_message, send_image, send_document, get_m
 from app.services.firebase import db, save_message_firestore, get_chat_history_firestore
 from app.services.agent import process_message
 from app.services.image_converter import convert_image_list
+
+# Routers
+from app.api.promotions import router as promotions_router
+from app.api.reminders import router as reminders_router
 
 # Cargar variables
 load_dotenv()
@@ -32,6 +37,26 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "maquinaria123")
 vertexai.init(project=PROJECT_ID, location=LOCATION)
 
 app = FastAPI(title="MACI WhatsApp Agent", version="2.0.0")
+
+# CORS - Permitir frontend local y producción
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "https://*.run.app",  # Cloud Run
+        "*"  # Permitir todos en desarrollo
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Registrar routers
+app.include_router(promotions_router, prefix="/api", tags=["promotions"])
+app.include_router(reminders_router, prefix="/api", tags=["reminders"])
 
 @app.get("/")
 def health_check():
@@ -130,6 +155,12 @@ async def receive_webhook(request: Request):
         if msg_type == "text":
             save_message_firestore(phone, "user", final_text)
         
+        # Resetear flag de recordatorio cuando el cliente responde
+        try:
+            db.collection('chats').document(phone).update({'reminderSent': False})
+        except:
+            pass  # Ignorar si falla
+        
         # 3. Obtener Historial
         history = get_chat_history_firestore(phone, limit=20)
         
@@ -171,22 +202,27 @@ async def receive_webhook(request: Request):
 # Endpoints auxiliares para frontend
 @app.post("/api/upload-image")
 async def upload_image_endpoint(request: Request):
-    # (Mantener lógica original o importar de servicio)
+    """Sube imagen a Cloud Storage"""
     try:
         from google.cloud import storage
         import uuid
         form = await request.form()
         file = form.get("file")
-        if not file: return {"success": False}
+        folder = form.get("folder", "uploads")
+        if not file: 
+            return {"success": False, "error": "No file provided"}
         contents = await file.read()
-        filename = f"uploads/{uuid.uuid4()}_{file.filename}"
+        filename = f"{folder}/{uuid.uuid4()}_{file.filename}"
         storage_client = storage.Client()
-        bucket = storage_client.bucket(f"{PROJECT_ID}.appspot.com")
+        # Usar el bucket de cotizaciones que ya existe
+        bucket = storage_client.bucket("venta-maquinarias-cotizaciones")
         blob = bucket.blob(filename)
         blob.upload_from_string(contents, content_type=file.content_type)
         blob.make_public()
+        logger.info(f"✅ Imagen subida: {blob.public_url}")
         return {"success": True, "url": blob.public_url}
     except Exception as e:
+        logger.error(f"❌ Error subiendo imagen: {e}")
         return {"success": False, "error": str(e)}
 
 @app.post("/api/send-whatsapp-message")

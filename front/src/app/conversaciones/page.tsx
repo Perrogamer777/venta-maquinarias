@@ -81,22 +81,16 @@ export default function ConversacionesPage() {
         const unsubscribe = onSnapshot(
             collection(db, 'chats'),
             async (snapshot) => {
-                console.log('📊 Firestore snapshot received. Docs count:', snapshot.docs.length);
-                console.log('📊 Snapshot metadata:', snapshot.metadata);
-
                 const convs: Conversacion[] = [];
 
                 for (const docSnapshot of snapshot.docs) {
                     const telefono = docSnapshot.id;
                     const chatData = docSnapshot.data();
-                    console.log('💬 Processing chat:', telefono, chatData);
 
                     // Fetch last message for preview
                     const mensajesRef = collection(db, 'chats', telefono, 'messages');
                     const mensajesQuery = query(mensajesRef, orderBy('timestamp', 'desc'), limit(1));
                     const mensajesSnapshot = await getDocs(mensajesQuery);
-
-                    console.log('📨 Messages for', telefono, ':', mensajesSnapshot.docs.length);
 
                     let ultimoMensaje = '';
                     let ultimaFecha = '';
@@ -130,8 +124,6 @@ export default function ConversacionesPage() {
                         unread: chatData.unread || false,
                     });
                 }
-
-                console.log('✅ Total conversations loaded:', convs.length);
 
                 // Sort by last message date (most recent first)
                 convs.sort((a, b) => {
@@ -181,10 +173,6 @@ export default function ConversacionesPage() {
         try {
             // Usar API route de Next.js (sin CORS) en production y dev
             const fullUrl = '/api/send-message';
-
-            console.log('🔍 Attempting to send to:', fullUrl);
-            console.log('📱 Phone:', selectedConv.telefono);
-            console.log('💬 Message:', newMessage);
 
             const response = await fetch(fullUrl, {
                 method: 'POST',
@@ -290,10 +278,6 @@ export default function ConversacionesPage() {
 
         const unsubscribe = onSnapshot(mensajesQuery, (snapshot) => {
             const msgs: Mensaje[] = snapshot.docs.map(doc => doc.data() as Mensaje);
-            console.log('📩 Mensajes cargados:', msgs.length);
-            if (msgs.length > 0) {
-                console.log('📩 Primer mensaje:', msgs[0]);
-            }
             setMensajes(msgs);
         });
 

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Cliente de Cloud Storage
 storage_client = storage.Client()
-BUCKET_NAME = "venta-maquinarias-2627e.firebasestorage.app"
+BUCKET_NAME = "venta-maquinarias-cotizaciones"
 
 
 @router.post("/upload-image")
