@@ -60,6 +60,7 @@ export default function Sidebar() {
     const managementItems = [
         // { href: getHref('/flujo'), icon: Workflow, label: 'Flujo Comercial' },
         { href: getHref('/inventario'), icon: Truck, label: nomenclature.units.plural },
+        { href: getHref('/promociones'), icon: nomenclature.promotions === 'Promociones' ? MessageSquarePlus : Workflow, label: nomenclature.promotions },
     ];
 
     const systemItems = [

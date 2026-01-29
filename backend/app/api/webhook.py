@@ -58,23 +58,22 @@ async def receive_webhook(request: Request):
         
         logger.info(f"📱 Mensaje de {phone}: {text[:50]}...")
         
-        # Intentar guardar mensaje usuario (no bloqueante)
+        # Guardar mensaje usuario
         try:
             save_message(phone, "user", text)
         except Exception as e:
-            logger.error(f"Error no bloqueante guardando mensaje usuario: {e}")
+            logger.error(f"Error guardando mensaje usuario: {e}")
         
-        # Obtener historial (con fallback a lista vacía)
+        # Historial
         history = []
         try:
             history = get_chat_history(phone)
         except Exception as e:
             logger.error(f"Error obteniendo historial: {e}")
         
-        # Procesar con el agente (ahora retorna dict con text, images, documents)
+        # Procesar con agente
         response = process_message(text, history)
         
-        # El agente puede retornar string (legacy) o dict (nuevo)
         if isinstance(response, str):
             response_text = response
             images = []
@@ -84,46 +83,54 @@ async def receive_webhook(request: Request):
             images = response.get("images", [])
             documents = response.get("documents", [])
         
-        # Enviar respuesta de texto primero
+        # 1. Enviar TEXTO
         if response_text:
             sent = send_message(phone, response_text)
             if sent:
                 logger.info("✅ Respuesta de texto enviada")
+                # Guardar texto
+                try:
+                    save_message(phone, "assistant", response_text)
+                except Exception as e:
+                    logger.error(f"Error guardando respuesta asistente: {e}")
             else:
                 logger.error("❌ Falló el envío de texto a WhatsApp")
         
-        
-        # Enviar imágenes (si hay) - CONVERTIR A JPG PRIMERO
+        # 2. Enviar IMÁGENES
         if images:
-            logger.info(f"🔄 Convirtiendo {len(images)} imágenes a formato compatible...")
+            logger.info(f"🔄 Procesando {len(images)} imágenes...")
+            
+            # Conversión explícita
             images_convertidas = convert_image_list(images)
+            logger.info(f"📸 Imágenes convertidas/validadas: {len(images_convertidas)}")
             
             for img_url in images_convertidas:
                 try:
                     logger.info(f"📤 Enviando imagen: {img_url}")
-                    send_image(phone, img_url, caption="📷 Imagen del producto")
-                    logger.info(f"🖼️ Imagen enviada correctamente")
+                    ok = send_image(phone, img_url, caption="📷 Imagen del producto")
+                    if ok:
+                        logger.info(f"🖼️ Imagen enviada correctamente")
+                        # Guardar imagen en historial
+                        try:
+                            save_message(phone, "assistant", "Imagen enviada", msg_type="image", media_url=img_url)
+                        except Exception as e:
+                            logger.error(f"Error guardando log imagen: {e}")
+                    else:
+                        logger.error(f"❌ API WhatsApp rechazó la imagen")
                 except Exception as e:
-                    logger.error(f"Error enviando imagen: {e}")
+                    logger.error(f"❌ Excepción enviando imagen: {e}")
         
-        # Enviar documentos (si hay)
+        # 3. Enviar DOCUMENTOS
         for doc in documents:
             try:
-                send_document(
-                    phone, 
-                    doc.get("url"), 
-                    doc.get("filename", "Cotizacion.pdf"),
-                    caption="📄 Tu cotización formal de MACI"
-                )
-                logger.info(f"📄 Documento enviado: {doc.get('filename')}")
+                send_document(phone, doc.get("url"), doc.get("filename", "Cotizacion.pdf"))
+                # Guardar documento
+                try:
+                    save_message(phone, "assistant", "Cotización PDF", msg_type="document", media_url=doc.get("url"))
+                except Exception as e:
+                    logger.error(f"Error guardando log documento: {e}")
             except Exception as e:
                 logger.error(f"Error enviando documento: {e}")
-        
-        # Intentar guardar respuesta asistente (no bloqueante)
-        try:
-            save_message(phone, "assistant", response_text)
-        except Exception as e:
-            logger.error(f"Error no bloqueante guardando respuesta asistente: {e}")
         
         return {"status": "ok"}
     

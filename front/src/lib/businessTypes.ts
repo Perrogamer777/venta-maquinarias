@@ -25,8 +25,8 @@ export const BUSINESS_TYPES: BusinessTypePreset[] = [
             units: { plural: 'Maquinarias', singular: 'Maquinaria' },
             reservations: { plural: 'Cotizaciones', singular: 'Cotización' },
             clients: { plural: 'Clientes', singular: 'Cliente' },
-            calendar: 'Pipeline de Ventas',
-            promotions: 'Catálogo',
+            calendar: 'Flujo de Venta',
+            promotions: 'Promociones',
             statistics: 'Métricas de Ventas'
         }
     },

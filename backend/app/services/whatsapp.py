@@ -66,6 +66,7 @@ def send_message(phone: str, message: str) -> bool:
 def send_image(phone: str, image_url: str, caption: str = "") -> bool:
     """Envía una imagen"""
     if not settings.META_TOKEN or not settings.PHONE_NUMBER_ID:
+        logger.warning("⚠️ META_TOKEN o PHONE_NUMBER_ID no configurados para imagen")
         return False
     
     url = f"https://graph.facebook.com/v18.0/{settings.PHONE_NUMBER_ID}/messages"
@@ -80,8 +81,18 @@ def send_image(phone: str, image_url: str, caption: str = "") -> bool:
     if caption: data["image"]["caption"] = caption[:1024]
     
     try:
-        requests.post(url, headers=headers, json=data, timeout=10).raise_for_status()
+        response = requests.post(url, headers=headers, json=data, timeout=15)
+        response.raise_for_status()
+        logger.info(f"✅ Imagen enviada exitosamente a {phone}")
         return True
+    except requests.exceptions.HTTPError as e:
+        # Log detallado del error de la API de WhatsApp
+        try:
+            error_detail = e.response.json()
+            logger.error(f"❌ Error API WhatsApp enviando imagen: {error_detail}")
+        except:
+            logger.error(f"❌ Error HTTP enviando imagen: {e}")
+        return False
     except Exception as e:
         logger.error(f"❌ Error enviando imagen: {e}")
         return False

@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDTJS6YiJUAhDMXwcfU3zPvaW7lXHdtWrQ',
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'venta-maquinarias-2627e.firebaseapp.com',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'venta-maquinarias-2627e',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'venta-maquinarias-2627e.firebasestorage.app',
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'venta-maquinarias-cotizaciones.firebasestorage.app',
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '200861292545',
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:200861292545:web:cac05f4d2bcf5187d68800',
 };

@@ -16,6 +16,7 @@ from datetime import datetime
 from app.services.whatsapp import send_message, send_image, send_document, get_media_url, download_media
 from app.services.firebase import db, save_message_firestore, get_chat_history_firestore
 from app.services.agent import process_message
+from app.services.image_converter import convert_image_list
 
 # Cargar variables
 load_dotenv()
@@ -141,10 +142,19 @@ async def receive_webhook(request: Request):
             send_message(phone, result["text"])
             save_message_firestore(phone, "assistant", result["text"])
             
-        # Imágenes
-        for img_url in result.get("images", []):
-            send_image(phone, img_url)
-            save_message_firestore(phone, "assistant", "📷 Imagen enviada", msg_type="image", media_url=img_url)
+        # Imágenes - CONVERTIR WebP a JPG para compatibilidad con WhatsApp
+        images = result.get("images", [])
+        if images:
+            logger.info(f"🔄 Convirtiendo {len(images)} imágenes para WhatsApp...")
+            images_convertidas = convert_image_list(images)
+            logger.info(f"✅ {len(images_convertidas)} imágenes convertidas")
+            
+            for img_url in images_convertidas:
+                logger.info(f"📤 Enviando imagen: {img_url}")
+                if send_image(phone, img_url, caption="📷 Imagen del producto"):
+                    save_message_firestore(phone, "assistant", "📷 Imagen enviada", msg_type="image", media_url=img_url)
+                else:
+                    logger.error(f"❌ Falló envío de imagen: {img_url}")
             
         # Documentos (PDFs)
         for doc in result.get("documents", []):

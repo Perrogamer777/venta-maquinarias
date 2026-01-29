@@ -56,8 +56,8 @@ const defaultNomenclature: Nomenclature = {
         singular: 'Agricultor',
         plural: 'Agricultores'
     },
-    promotions: 'Catálogo',
-    calendar: 'Pipeline de Ventas',
+    promotions: 'Promociones',
+    calendar: 'Flujo de Venta',
     statistics: 'Estadísticas'
 };
 

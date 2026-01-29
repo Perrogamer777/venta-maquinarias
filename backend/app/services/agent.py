@@ -15,12 +15,15 @@ from vertexai.generative_models import (
 from app.core.config import settings
 from app.services.maquinarias import search_maquinarias, get_maquinaria
 from app.services.quotation import generate_quotation_pdf, save_quotation_to_firestore, update_quotation_status
+from app.services.settings import get_bot_settings
 
 logger = logging.getLogger(__name__)
 
 vertexai.init(location=settings.GCP_LOCATION)
 
-SYSTEM_PROMPT = """
+def get_system_prompt(max_discount: int) -> str:
+    """Genera el prompt del sistema con configuración dinámica."""
+    base_prompt = """
 <role>
 Eres un asesor comercial experto de MACI - Maquinaria Agrícola en Chile.
 Tu objetivo es ayudar a los agricultores a encontrar la maquinaria perfecta, resolver dudas técnicas y generar cotizaciones formales.
@@ -44,14 +47,16 @@ Tu objetivo es ayudar a los agricultores a encontrar la maquinaria perfecta, res
 - SIEMPRE ejecuta la herramienta de búsqueda INMEDIATAMENTE si necesitas información.
 - **SOLO OFRECE LO QUE EXISTE**: Si no encuentras algo en el inventario, dilo claramente.
 - **FORMATO**: Usa UN SOLO asterisco para negritas (ej: *producto*, NO **producto**). WhatsApp no usa doble asterisco.
-- Si el cliente dice "Me interesa X", **NO VUELVAS A BUSCAR**. Usa `mostrar_imagenes_por_nombre` para dar detalles visuales.
-- **CONTEXTO**: Si el usuario dice "ese", "lo quiero", "cotízalo", **ASUME** que habla del ÚLTIMO PRODUCTO que mostraste. NO preguntes el nombre de nuevo, **BÚSCALO EN EL HISTORIAL**.
+- **REGLA DE ORO**: Si el cliente pide información, precio, detalles, o muestra interés en uno o varios productos específicos (ej: "Cuéntame del carro", "Me interesa el aljibe", "¿Qué precio tiene la rastra?"), **DEBES EJECUTAR LA HERRAMIENTA `mostrar_imagenes_por_nombre`**.
+- **PROHIBIDO** responder solo con texto. SIEMPRE acompaña la respuesta con la ficha visual usando la herramienta.
+- No preguntes "¿te envío fotos?". **ENVIALAS DIRECTAMENTE** junto con la información.
 </constraints>
 
 <negotiation_rules>
 1. **Descuentos**:
-   - Si el cliente dice que está "muy caro" o pide rebaja, PUEDES ofrecer un descuento MÁXIMO del 10%.
-   - **NUNCA** ofrezcas más del 10%. Es el tope absoluto.
+   - Si el cliente dice que está "muy caro" o pide rebaja, PUEDES ofrecer un descuento MÁXIMO del {MAX_DISCOUNT}%.
+   - **NUNCA** ofrezcas más del {MAX_DISCOUNT}%. Es el tope absoluto.
+   - Si el tope es 0%, NO puedes ofrecer descuentos. Di amablemente que los precios son fijos por la calidad del equipo.
    - Si ofreces descuento o el cliente acepta el precio, cambia el estado a `NEGOCIANDO`.
    
 2. **Cierre de Venta**:
@@ -80,10 +85,14 @@ Asistente: (Llamada a función `buscar_maquinaria(consulta="cosecha frutas")`)
 Usuario: "Me interesa el carro comedor y el aljibe"
 Asistente: (Llamada a función `mostrar_imagenes_por_nombre(nombres_productos=["Carro comedor movil", "Carro Aljibe"])`)
 
+Usuario: "¿Qué precio tiene el carro cónico?"
+Asistente: (Llamada a función `mostrar_imagenes_por_nombre(nombres_productos=["Carro conico descarga inferior"])`)
+
 Usuario: "Cotízame esos dos. Soy Juan Perez, juan@mail.com, +5699999999"
 Asistente: (Llamada a función `generar_cotizacion(nombres_productos=["Carro comedor movil", "Carro Aljibe"], cliente_nombre="Juan Perez", ...)`)
 </examples>
 """
+    return base_prompt.replace("{MAX_DISCOUNT}", str(max_discount))
 
 # Funciones
 buscar_func = FunctionDeclaration(
@@ -261,7 +270,11 @@ def execute_func(name: str, args: dict) -> dict:
 def process_message(user_message: str, chat_history: list = None) -> dict:
     """Procesa mensaje."""
     try:
-        model = GenerativeModel("gemini-2.5-flash", system_instruction=[SYSTEM_PROMPT], tools=[tools])
+        # Load dynamic settings
+        bot_settings = get_bot_settings()
+        system_prompt = get_system_prompt(bot_settings.get("maxDiscount", 10))
+        
+        model = GenerativeModel("gemini-2.5-flash", system_instruction=[system_prompt], tools=[tools])
         
         history = ""
         if chat_history:
@@ -293,13 +306,12 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                             summary_prompt = (
                                 f"CONTEXTO: El usuario preguntó '{user_message}'.\n"
                                 f"RESULTADO BÚSQUEDA: Se encontraron estos productos:\n{productos_txt}\n\n"
-                                f"INSTRUCCIÓN: Como vendedor experto, presenta estos productos al cliente.\n"
-                                f"1. Crea un resumen atractivo de cada uno. NO cortes frases a medias. Resume la descripción si es muy larga.\n"
-                                f"2. Muestra el precio. Si es 0 o null, di 'Consultar precio'.\n"
-                                f"3. Si hay muchos > 5, resume los más importantes y ofrece mostrar más.\n"
-                                f"4. Usa emojis (🚜, 💰, ✅) pero sin saturar.\n"
-                                f"5. Al final, invita a ver fotos o cotizar.\n"
-                                f"6. Formato limpio para WhatsApp (usa *negritas* para nombres).\n"
+                                f"INSTRUCCIÓN: Como vendedor experto, responde con calidez y entusiasmo (pero SIN presentarte de nuevo como asesor si ya hablaste).\n"
+                                f"1. Di algo como '¡Excelente! Tenemos estas opciones disponibles para ti:' o similar.\n"
+                                f"2. LISTA NUMERADA SOLO CON LOS NOMBRES de los productos (sin descripciones ni precios).\n"
+                                f"3. Si hay muchos > 5, selecciona los 5 más relevantes.\n"
+                                f"4. CIERRA OBLIGATORIAMENTE con: '💬 ¿Te interesa ver fotos o detalles de alguno de estos productos? Dime cuál.'\n"
+                                f"5. Usa emojis (🚜, 🌾) para dar calidez.\n"
                             )
                             
                             try:
@@ -342,10 +354,13 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                             
                             texto_full = ""
                             for item in items:
+                                texto_full += f"📷 *{item['nombre']}*\n\n"
+                                
                                 if item.get("imagenes"):
                                     result["images"].extend(item["imagenes"][:3])
+                                else:
+                                    texto_full += "_[Este producto no tiene imágenes disponibles]_\n"
                                 
-                                texto_full += f"📷 *{item['nombre']}*\n\n"
                                 if item.get("descripcion"):
                                     texto_full += f"{item['descripcion']}\n\n"
                                 if item.get("ficha_tecnica_pdf"):

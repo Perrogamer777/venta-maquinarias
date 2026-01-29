@@ -22,6 +22,11 @@ interface BotSettings {
     maxResponseLength: number;
     useEmojis: boolean;
     mentionPrices: boolean;
+    // Negotiation & Follow-up
+    maxDiscount: number;
+    enableReminders: boolean;
+    reminderTimeMinutes: number;
+    reminderMessage: string;
     // Advanced mode
     useAdvancedMode: boolean;
     systemPrompt: string;
@@ -38,6 +43,10 @@ const defaultSettings: BotSettings = {
     maxResponseLength: 500,
     useEmojis: true,
     mentionPrices: true,
+    maxDiscount: 10,
+    enableReminders: false,
+    reminderTimeMinutes: 30,
+    reminderMessage: '¿Sigues ahí? Si tienes alguna duda sobre la maquinaria, estoy aquí para ayudarte. 🚜',
     useAdvancedMode: false,
     systemPrompt: ''
 };
@@ -343,7 +352,7 @@ export default function ConfiguracionPage() {
                                 Opciones de Comportamiento
                             </h2>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                                     <input
                                         type="checkbox"
@@ -369,6 +378,74 @@ export default function ConfiguracionPage() {
                                         <p className="text-xs text-gray-500">Incluir precios automáticamente</p>
                                     </div>
                                 </label>
+                            </div>
+
+                            {/* Opciones de Negociación y Seguimiento */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        💰 Tope de Descuento (%)
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={settings.maxDiscount === 0 ? '' : settings.maxDiscount}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setSettings({ ...settings, maxDiscount: val === '' ? 0 : parseInt(val) })
+                                            }}
+                                            className="w-24 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white"
+                                            placeholder="0"
+                                        />
+                                        <span className="text-sm text-gray-500">%</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Máximo descuento que el agente puede ofrecer si el cliente insiste.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                        ⏰ Recordatorio Automático
+                                    </label>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <input
+                                            type="checkbox"
+                                            checked={settings.enableReminders || false}
+                                            onChange={(e) => setSettings({ ...settings, enableReminders: e.target.checked })}
+                                            className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
+                                        />
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Activar seguimiento</span>
+                                    </div>
+                                    {settings.enableReminders && (
+                                        <div className="space-y-3 animate-fade-in">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm text-gray-500">Enviar a los</span>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={settings.reminderTimeMinutes || ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        // If empty, set to 0 temporarily (handled by value prop logic) or keep as 0. 
+                                                        // But to be valid, it should probably be > 0. 
+                                                        // However, for typing, we must allow 0 or empty.
+                                                        setSettings({ ...settings, reminderTimeMinutes: val === '' ? 0 : parseInt(val) })
+                                                    }}
+                                                    className="w-20 px-2 py-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white text-sm"
+                                                    placeholder="30"
+                                                />
+                                                <span className="text-sm text-gray-500">minutos sin respuesta.</span>
+                                            </div>
+                                            <textarea
+                                                value={settings.reminderMessage || ''}
+                                                onChange={(e) => setSettings({ ...settings, reminderMessage: e.target.value })}
+                                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none dark:text-white text-sm h-20 resize-none"
+                                                placeholder="Mensaje de recordatorio..."
+                                            />
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

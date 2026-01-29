@@ -142,14 +142,14 @@ export default function PipelinePage() {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Kanban size={28} className="text-blue-600" />
-                            Pipeline de Ventas
+                            Flujo de Venta
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                             Visualiza y gestiona el progreso de tus oportunidades
                         </p>
                     </div>
                     <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-800 shadow-sm">
-                        <span className="text-sm text-gray-500">Valor Total Pipeline: </span>
+                        <span className="text-sm text-gray-500">Valor Total Flujo: </span>
                         <span className="font-bold text-gray-900 dark:text-white ml-2">
                             ${cotizaciones.reduce((sum, c) => sum + (c.precio_cotizado || 0), 0).toLocaleString('es-CL')}
                         </span>

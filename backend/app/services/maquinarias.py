@@ -35,6 +35,7 @@ def search_maquinarias(query: str, limit: int = 10) -> List[dict]:
             "sembradora": "siembra",
             "rastra": "grada",
             "fumigadora": "nebulizador",
+            "fumigacion": "nebulizador",
             "atomizador": "nebulizador",
             "rociador": "nebulizador",
             "triturador": "trituradora",
@@ -195,11 +196,11 @@ def format_maquinaria_for_chat(maquinaria: dict) -> str:
     nombre = maquinaria.get("nombre", "Sin nombre")
     precio = maquinaria.get("precioReferencia", 0)
     categoria = maquinaria.get("categoria", "")
-    descripcion = maquinaria.get("descripcion", "")[:150]
+    descripcion = maquinaria.get("descripcion", "")
     
     precio_fmt = f"${precio:,.0f}".replace(",", ".") if precio else "Consultar"
     
     return f"""🚜 *{nombre}*
 📂 {categoria}
-📝 {descripcion}...
+📝 {descripcion}
 💰 Precio referencial: {precio_fmt} + IVA"""
