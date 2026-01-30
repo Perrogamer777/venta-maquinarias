@@ -22,6 +22,7 @@ from app.services.image_converter import convert_image_list
 # Routers
 from app.api.promotions import router as promotions_router
 from app.api.reminders import router as reminders_router
+from app.api.meetings import router as meetings_router
 
 # Cargar variables
 load_dotenv()
@@ -57,6 +58,7 @@ app.add_middleware(
 # Registrar routers
 app.include_router(promotions_router, prefix="/api", tags=["promotions"])
 app.include_router(reminders_router, prefix="/api", tags=["reminders"])
+app.include_router(meetings_router, prefix="/api", tags=["meetings"])
 
 @app.get("/")
 def health_check():
@@ -166,7 +168,7 @@ async def receive_webhook(request: Request):
         
         # 4. Procesar con AGENTE INTELIGENTE
         # Usamos el servicio robusto de agent.py (con tools, retry, cotizaciones)
-        result = process_message(final_text, chat_history=history)
+        result = process_message(final_text, chat_history=history, client_phone=phone)
         
         # 5. Enviar Respuestas
         if result.get("text"):

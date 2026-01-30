@@ -118,3 +118,17 @@ export interface Promocion {
         fallidos: number;
     }[];
 }
+
+// Reunión / Llamada programada
+export interface Meeting {
+    id: string;
+    phone: string;
+    email: string;
+    client_name?: string; // Extraído de cotizaciones si existe
+    preferred_time: string;
+    scheduled_at?: string; // Fecha/hora calculada para el calendario
+    type: 'videollamada' | 'llamada telefónica';
+    status: 'pendiente' | 'confirmada' | 'completada' | 'cancelada';
+    created_at: string;
+    notes?: string;
+}

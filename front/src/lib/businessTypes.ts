@@ -113,3 +113,11 @@ export const ESTADOS_COTIZACION = [
     { value: 'VENDIDA', label: 'Vendida', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     { value: 'PERDIDA', label: 'Perdida', color: 'bg-gray-100 text-gray-800', icon: XCircle }
 ];
+
+// Estados de reuniones
+export const ESTADOS_REUNION = [
+    { value: 'pendiente', label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: PlusCircle },
+    { value: 'confirmada', label: 'Confirmada', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: CheckCircle },
+    { value: 'completada', label: 'Completada', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+    { value: 'cancelada', label: 'Cancelada', color: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400', icon: XCircle }
+];

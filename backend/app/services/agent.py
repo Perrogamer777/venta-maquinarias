@@ -1,6 +1,5 @@
 """
-Servicio del agente de IA con Gemini y Function Calling.
-VERSION SIMPLIFICADA ANTI-LOOPS.
+Agente de IA con Gemini y Function Calling.
 """
 import logging
 import json
@@ -16,6 +15,7 @@ from app.core.config import settings
 from app.services.maquinarias import search_maquinarias, get_maquinaria
 from app.services.quotation import generate_quotation_pdf, save_quotation_to_firestore, update_quotation_status
 from app.services.settings import get_bot_settings
+from app.services.firebase import schedule_meeting
 
 import time
 from google.api_core.exceptions import ResourceExhausted
@@ -178,6 +178,27 @@ Si el cliente busca algo que NO tienes en catálogo:
 
 4. `actualizar_estado_cotizacion`: Cuando la negociación avance.
 
+5. `agendar_reunion`: Úsala cuando el cliente solicite agendar una reunión o llamada.
+   **DATOS REQUERIDOS**:
+   - Email del cliente (OBLIGATORIO)
+   - Horario preferido (OBLIGATORIO) - ej: "martes 14:30", "mañana 10am"
+   - Tipo de reunión: "videollamada" o "llamada telefónica" (opcional, default videollamada)
+   - NOTA: El teléfono se obtiene automáticamente del chat.
+   
+   **FLUJO CORRECTO**:
+   - Cliente: "quiero agendar una reunión"
+   - Tú: "¡Excelente! ¿Me das tu correo y en qué horario te vendría bien? ¿Prefieres videollamada o llamada?"
+   - Cliente: "luis@email.com, martes a las 14:30"
+   - **EJECUTAS INMEDIATAMENTE**: agendar_reunion(cliente_email="luis@email.com", horario_preferido="martes 14:30", tipo_reunion="videollamada")
+   - La función devuelve confirmación
+   - Tú: "¡Listo! Reunión agendada para el martes a las 14:30. Nuestro equipo te contactará. 🤝"
+   
+   **CRÍTICO - EJECUTA LA FUNCIÓN**:
+   - Cuando tengas email + horario → LLAMA a agendar_reunion INMEDIATAMENTE
+   - NO solo confirmes los datos verbalmente. DEBES ejecutar la función.
+   - Si el cliente da todos los datos en un mensaje → ejecuta la función en ese momento.
+
+
 **REGLA DE ORO**: 
 - Busca ANTES de ofrecer
 - Solo ofrece lo que TIENES
@@ -301,7 +322,21 @@ estado_func = FunctionDeclaration(
     }
 )
 
-tools = Tool(function_declarations=[buscar_func, mostrar_imagenes_func, cotizar_func, estado_func])
+agendar_reunion_func = FunctionDeclaration(
+    name="agendar_reunion",
+    description="Agenda una reunión o llamada con el cliente. EJECUTAR cuando el cliente proporcione su email y horario preferido.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "cliente_email": {"type": "string", "description": "Email del cliente (OBLIGATORIO)"},
+            "horario_preferido": {"type": "string", "description": "Horario preferido para la reunión (ej: 'martes 14:30', 'mañana 15:00')"},
+            "tipo_reunion": {"type": "string", "enum": ["videollamada", "llamada telefónica"], "description": "Tipo de reunión (default: videollamada)"}
+        },
+        "required": ["cliente_email", "horario_preferido"]
+    }
+)
+
+tools = Tool(function_declarations=[buscar_func, mostrar_imagenes_func, cotizar_func, estado_func, agendar_reunion_func])
 
 
 def execute_func(name: str, args: dict) -> dict:
@@ -412,11 +447,44 @@ def execute_func(name: str, args: dict) -> dict:
         else:
             return {"success": False, "mensaje": "No encontré una cotización activa para actualizar."}
     
+    elif name == "agendar_reunion":
+        # Usar teléfono del cliente actual si no se proporciona
+        telefono = args.get("cliente_telefono") or _current_client_phone
+        email = args.get("cliente_email")
+        horario = args.get("horario_preferido")
+        tipo = args.get("tipo_reunion", "videollamada")
+        
+        success = schedule_meeting(
+            phone=telefono,
+            client_email=email,
+            meeting_time=horario,
+            meeting_type=tipo
+        )
+        
+        if success:
+            return {
+                "success": True,
+                "email": email,
+                "telefono": telefono,
+                "horario": horario,
+                "tipo": tipo,
+                "mensaje": f"Reunión agendada para {horario}"
+            }
+        else:
+            return {"success": False, "mensaje": "Hubo un error al agendar la reunión. Por favor intenta nuevamente."}
+    
+    
     return {"success": False}
 
 
-def process_message(user_message: str, chat_history: list = None) -> dict:
+# Variable global para el teléfono del cliente actual
+_current_client_phone = None
+
+def process_message(user_message: str, chat_history: list = None, client_phone: str = None) -> dict:
     """Procesa mensaje."""
+    global _current_client_phone
+    _current_client_phone = client_phone
+    
     try:
         # Load dynamic settings
         bot_settings = get_bot_settings()
@@ -424,7 +492,7 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
         
         model = GenerativeModel("gemini-2.5-flash", system_instruction=[system_prompt], tools=[tools])
         
-        history = ""
+        history = "" 
         if chat_history:
             for msg in chat_history[-40:]:
                 role = "Usuario" if msg["role"] == "user" else "Asistente"
@@ -565,6 +633,28 @@ def process_message(user_message: str, chat_history: list = None) -> dict:
                             result["text"] = fr["mensaje"]
                         else:
                             result["text"] = "⚠️ No pude actualizar el estado de la venta. Verifica que tengas una cotización previa."
+                    
+                    elif fc.name == "agendar_reunion":
+                        if fr.get("success"):
+                            email = fr.get("email", "")
+                            telefono = fr.get("telefono", "")
+                            horario = fr.get("horario", "")
+                            tipo = fr.get("tipo", "videollamada")
+                            
+                            tipo_texto = "videollamada" if tipo == "videollamada" else "llamada telefónica"
+                            
+                            result["text"] = (
+                                f"✅ *Reunión Agendada*\n\n"
+                                f"📅 *Horario:* {horario}\n"
+                                f"📞 *Tipo:* {tipo_texto}\n\n"
+                                f"*Datos de contacto:*\n"
+                                f"• *Correo:* {email}\n"
+                                f"• *Teléfono:* {telefono}\n\n"
+                                f"Nuestro equipo se pondrá en contacto contigo para confirmar la reunión.\n\n"
+                                f"¡Gracias por tu confianza! 👋"
+                            )
+                        else:
+                            result["text"] = fr.get("mensaje", "⚠️ Hubo un problema agendando la reunión. Por favor intenta nuevamente.")
 
         if not result["text"]:
             result["text"] = "Error procesando. Intenta de nuevo."

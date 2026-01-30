@@ -15,7 +15,8 @@ import {
     MessageSquarePlus,
     ChevronLeft,
     Sun,
-    Moon
+    Moon,
+    Calendar
 } from 'lucide-react';
 import { TenantContext } from '@/contexts/TenantContext';
 import { useContext } from 'react';
@@ -54,6 +55,7 @@ export default function Sidebar() {
         { href: getHref('/'), icon: Home, label: 'Dashboard' },
         { href: getHref('/conversaciones'), icon: MessageSquare, label: 'Conversaciones' },
         { href: getHref('/cotizaciones'), icon: FileText, label: nomenclature.reservations.plural },
+        { href: getHref('/calendario'), icon: Calendar, label: 'Calendario' },
         { href: getHref('/pipeline'), icon: Kanban, label: nomenclature.calendar },
     ];
 
