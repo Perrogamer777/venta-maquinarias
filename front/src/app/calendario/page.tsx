@@ -72,7 +72,7 @@ export default function CalendarioPage() {
 
     const fetchMeetings = async () => {
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://venta-maquinarias-backend-925532912523.us-central1.run.app';
             const response = await fetch(`${backendUrl}/api/meetings`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
@@ -92,7 +92,7 @@ export default function CalendarioPage() {
 
     const handleUpdateStatus = async (meetingId: string, newStatus: string) => {
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://venta-maquinarias-backend-925532912523.us-central1.run.app';
             const response = await fetch(`${backendUrl}/api/meetings/${meetingId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -106,7 +106,7 @@ export default function CalendarioPage() {
 
     const handleUpdateNotes = async (meetingId: string, notes: string) => {
         try {
-            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://venta-maquinarias-backend-925532912523.us-central1.run.app';
             const response = await fetch(`${backendUrl}/api/meetings/${meetingId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
