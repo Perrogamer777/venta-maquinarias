@@ -22,6 +22,9 @@ const localizer = dateFnsLocalizer({
     locales,
 });
 
+// Configuración de actualización automática
+const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos (ajustable)
+
 export default function CalendarioPage() {
     const [meetings, setMeetings] = useState<Meeting[]>([]);
     const [filteredMeetings, setFilteredMeetings] = useState<Meeting[]>([]);
@@ -31,14 +34,39 @@ export default function CalendarioPage() {
     const [calendarView, setCalendarView] = useState<View>('week');
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+    const [autoRefresh, setAutoRefresh] = useState(true);
+    const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
+    // Cargar reuniones inicialmente
     useEffect(() => { fetchMeetings(); }, []);
+
+    // Auto-refresh cada 30 segundos
+    useEffect(() => {
+        if (!autoRefresh) return;
+        
+        const interval = setInterval(() => {
+            fetchMeetings();
+        }, AUTO_REFRESH_INTERVAL);
+
+        return () => clearInterval(interval);
+    }, [autoRefresh]);
 
     useEffect(() => {
         if (statusFilter === 'all') {
             setFilteredMeetings(meetings);
         } else {
             setFilteredMeetings(meetings.filter(m => m.status === statusFilter));
+        }
+        
+        // Actualizar la reunión seleccionada si todavía existe
+        if (selectedMeeting) {
+            const updatedMeeting = meetings.find(m => m.id === selectedMeeting.id);
+            if (updatedMeeting) {
+                setSelectedMeeting(updatedMeeting);
+            } else {
+                // La reunión fue eliminada o cancelada
+                setSelectedMeeting(null);
+            }
         }
     }, [statusFilter, meetings]);
 
@@ -51,6 +79,7 @@ export default function CalendarioPage() {
             if (data.success) {
                 setMeetings(data.meetings);
                 setFilteredMeetings(data.meetings);
+                setLastUpdate(new Date());
             }
         } catch (error) {
             console.error('Error fetching meetings:', error);
@@ -279,7 +308,28 @@ export default function CalendarioPage() {
                             <CalendarIcon size={28} className="text-green-600" />
                             Calendario de Reuniones
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Gestiona las llamadas y videollamadas programadas</p>
+                        <div className="flex items-center gap-3 mt-1">
+                            <p className="text-gray-500 dark:text-gray-400 text-sm">Gestiona las llamadas y videollamadas programadas</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                                <span>
+                                    {autoRefresh ? 'Actualización automática' : 'Pausado'} · 
+                                    <span className="ml-1">{format(lastUpdate, 'HH:mm:ss')}</span>
+                                </span>
+                                <button 
+                                    onClick={() => setAutoRefresh(!autoRefresh)}
+                                    className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded text-xs font-medium transition-colors"
+                                >
+                                    {autoRefresh ? 'Pausar' : 'Reanudar'}
+                                </button>
+                                <button 
+                                    onClick={fetchMeetings}
+                                    className="px-2 py-0.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 rounded text-xs font-medium transition-colors"
+                                >
+                                    Actualizar ahora
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="flex bg-gray-100 dark:bg-slate-800 rounded-xl p-1">
